@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dynamic-skills.dev/schemas/clarification-response.schema.json",
+  "title": "ClarificationResponse",
+  "description": "The user's answers to one consolidated ClarificationRequest round. The root agent asks the questions through its native user-interaction tool and submits this document. Include one entry per question in the request, echoing its `id`. Never invent answers on the user's behalf: if the user did not answer, use `skipped`; if they explicitly refused, use `declined`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runId", "round", "answers"],
+  "properties": {
+    "runId": {
+      "description": "Copy exactly from the ClarificationRequest.",
+      "type": "string",
+      "minLength": 1
+    },
+    "round": {
+      "description": "Copy exactly from the ClarificationRequest (1-based; at most 3 rounds per run).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "answers": {
+      "description": "One entry per question of the request.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["questionId", "status"],
+        "properties": {
+          "questionId": {
+            "description": "The `id` of the question being answered (e.g. `q_1a2b3c4d5e6f`).",
+            "type": "string",
+            "minLength": 1
+          },
+          "answer": {
+            "description": "The user's answer, verbatim or faithfully summarised. Required (non-empty) when status is `answered`; omit otherwise.",
+            "type": "string"
+          },
+          "status": {
+            "description": "`answered`: the user answered. `declined`: the user explicitly chose not to answer (it will not be asked again; a documented assumption is used instead). `skipped`: the user did not respond to this question.",
+            "enum": ["answered", "declined", "skipped"]
+          }
+        }
+      }
+    }
+  }
+}

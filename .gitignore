@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.dynamic-skills-runtime/
+*.log
+.DS_Store

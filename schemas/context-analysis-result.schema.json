@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dynamic-skills.dev/schemas/context-analysis-result.schema.json",
+  "title": "ContextAnalysisResult",
+  "description": "Semantic interpretation of a Context Packet, written by the host agent (Context Analysis Agent). Base every statement on the packet. Keep observations and inferences separate: a claim is `observed` only when a packet evidence item or packet file directly states it; anything you reasoned out is `inferred`. Agentic inferences must never be presented as observed facts. Questions you cannot answer from the packet go in `unknowns`; disagreeing sources go in `conflicts`; missing project files you need go in `additionalContextRequests`. Do not list general engineering knowledge you already have as unknowns.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "technology", "architecture", "taskContext", "evidence", "unknowns", "conflicts"],
+  "properties": {
+    "schemaVersion": {
+      "description": "Contract version. Always `1.0`.",
+      "const": "1.0"
+    },
+    "runId": {
+      "description": "Copy exactly from the Context Packet's `runId`.",
+      "type": "string",
+      "minLength": 1
+    },
+    "technology": {
+      "description": "Technology relevant to the task, normalised to plain names (with versions where known), e.g. `TypeScript 5.4`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages", "frameworks", "runtimes", "packageManagers"],
+      "properties": {
+        "languages": { "$ref": "#/$defs/stringList", "description": "Programming languages, e.g. `TypeScript`." },
+        "frameworks": { "$ref": "#/$defs/stringList", "description": "Frameworks and major libraries, e.g. `Express 4.19`." },
+        "runtimes": { "$ref": "#/$defs/stringList", "description": "Runtimes, e.g. `Node.js 20`." },
+        "packageManagers": { "$ref": "#/$defs/stringList", "description": "Package managers, e.g. `pnpm`." }
+      }
+    },
+    "architecture": {
+      "description": "How the repository is organised, as it bears on the task.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patterns", "moduleStructure", "conventions", "dependencies"],
+      "properties": {
+        "patterns": { "$ref": "#/$defs/stringList", "description": "Architectural patterns, e.g. `hexagonal: adapters under src/adapters`." },
+        "moduleStructure": { "$ref": "#/$defs/stringList", "description": "Relevant modules/packages and their responsibilities." },
+        "conventions": { "$ref": "#/$defs/stringList", "description": "Coding, naming, error-handling and testing conventions the task must follow." },
+        "dependencies": { "$ref": "#/$defs/stringList", "description": "Dependencies that matter for the task (internal modules or external packages)." }
+      }
+    },
+    "taskContext": {
+      "description": "What the task touches in this repository.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relevantComponents", "existingImplementations", "constraints"],
+      "properties": {
+        "relevantComponents": { "$ref": "#/$defs/stringList", "description": "Components, directories or files the task will touch (prefer repository-relative paths)." },
+        "existingImplementations": { "$ref": "#/$defs/stringList", "description": "Existing code that already does something similar and should be followed or reused." },
+        "constraints": { "$ref": "#/$defs/stringList", "description": "Project-specific constraints the work must respect." },
+        "expectedOutcome": { "type": "string", "description": "What done looks like for this task, if it can be determined." }
+      }
+    },
+    "evidence": {
+      "description": "Claims supporting the analysis. Each must cite a source present in the Context Packet.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source", "type"],
+        "properties": {
+          "claim": {
+            "description": "One factual statement, e.g. `Webhook handlers verify signatures with stripe.webhooks.constructEvent`.",
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "description": "Either a packet evidence id (`ev_…`) or a repository-relative path that appears in the packet (instructions, configuration, sourceFiles, evidence sources, existingSkills, structure, framework sources). A `:line` or `#Lline` suffix is allowed. An `observed` claim whose source is not in the packet is rejected.",
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "description": "`observed`: directly stated by the cited source. `inferred`: your reasoned conclusion from evidence.",
+            "enum": ["observed", "inferred"]
+          },
+          "confidence": {
+            "description": "Optional confidence between 0 and 1.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "unknowns": {
+      "description": "Project-specific facts or user intent that could not be established from the packet. Mark `critical` only when the skill would be wrong without the answer. Do not include questions answerable from general engineering expertise, or facts already in the packet.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "importance"],
+        "properties": {
+          "question": {
+            "description": "A single, specific question, e.g. `Should refunds be processed synchronously or queued?`",
+            "type": "string",
+            "minLength": 1
+          },
+          "importance": {
+            "description": "`critical`: blocks a correct skill. `optional`: a documented assumption is acceptable.",
+            "enum": ["critical", "optional"]
+          }
+        }
+      }
+    },
+    "conflicts": {
+      "description": "Places where packet sources disagree (e.g. two Node versions).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "observations", "sources"],
+        "properties": {
+          "subject": { "description": "What the disagreement is about, e.g. `Node.js version`.", "type": "string", "minLength": 1 },
+          "observations": {
+            "description": "The conflicting observations, one per source, e.g. [`.nvmrc pins 18`, `package.json engines requires >=20`].",
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "sources": {
+            "description": "Packet evidence ids or repository-relative paths backing the observations.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "additionalContextRequests": {
+      "description": "Optional targeted requests for project information missing from the packet. Keep them few and specific; never request a full scan.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/contextRequest" }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "contextRequest": {
+      "description": "A targeted, bounded request for more repository information (same contract as context-request.schema.json).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "reason", "priority"],
+      "properties": {
+        "type": {
+          "description": "`source_file`, `configuration`, `directory_summary`, `dependency_details` or `documentation`.",
+          "enum": ["source_file", "configuration", "directory_summary", "dependency_details", "documentation"]
+        },
+        "path": {
+          "description": "Repository-relative POSIX path; not absolute, no `..` segments.",
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "description": "What to look for when no exact path is known (dependency name, symbol).",
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "description": "Why this information is needed for the task.",
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "description": "`required` when the skill cannot be compiled correctly without it; otherwise `optional`.",
+          "enum": ["required", "optional"]
+        }
+      }
+    }
+  }
+}

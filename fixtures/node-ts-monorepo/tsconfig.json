@@ -1,0 +1,10 @@
+{
+  // Shared compiler settings for all packages
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+  },
+  "references": [{ "path": "packages/api" }, { "path": "packages/web" }]
+}

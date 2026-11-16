@@ -1,0 +1,14 @@
+{
+  "name": "legacy-service",
+  "version": "2.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "fastify": "^4.28.1"
+  }
+}

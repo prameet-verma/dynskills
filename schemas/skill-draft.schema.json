@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dynamic-skills.dev/schemas/skill-draft.schema.json",
+  "title": "SkillDraft",
+  "description": "Structured content for one task-specific Agent Skill, written by the host LLM and rendered by Dynamic Skills into a portable SKILL.md. Write a compact operating procedure for a specialist, not documentation: no generic software-engineering advice, no repetition of repository instructions, no copy of the Context Packet. Every project-specific constraint must cite evidence from the packet (`ev_…` ids or repository-relative paths) or a documented assumption (`asm_…`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "name", "description", "specialist", "authority", "workflow", "projectConstraints", "verification"],
+  "properties": {
+    "schemaVersion": {
+      "description": "Contract version. Always `1.0`.",
+      "const": "1.0"
+    },
+    "runId": {
+      "description": "Copy exactly from the compilation request's `runId`.",
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "description": "Skill name: lowercase kebab-case, at most 64 characters, describing the task-specific expertise, e.g. `payment-webhook-integration`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "description": {
+      "description": "What the skill does and when to use it, in one or two sentences (1–1024 characters). Agents select skills from this text, so name the task, the technology and the trigger, e.g. `Implement and review Stripe webhook handlers in this Express service following its signature-verification, idempotency and testing conventions. Use when adding or changing payment webhooks.`",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "specialist": {
+      "description": "Who the specialist is and what they are responsible for (not a seniority persona).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "responsibility"],
+      "properties": {
+        "identity": { "description": "The specialist's expertise, e.g. `Payment integration engineer for this repository's Express API`.", "type": "string", "minLength": 1 },
+        "responsibility": { "description": "The outcome the specialist is accountable for in this task.", "type": "string", "minLength": 1 }
+      }
+    },
+    "authority": {
+      "description": "Authority model: what the specialist owns, may decide alone, must not do, and how correctness is established.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownership", "decisionRights", "boundaries", "accountability"],
+      "properties": {
+        "ownership": { "$ref": "#/$defs/stringList", "description": "Files, components or concerns the specialist owns for this task." },
+        "decisionRights": { "$ref": "#/$defs/stringList", "description": "Decisions the specialist may take without asking." },
+        "boundaries": { "$ref": "#/$defs/stringList", "description": "Prohibited assumptions or modifications (e.g. `Do not change the public API of src/payments/index.ts`)." },
+        "accountability": { "$ref": "#/$defs/stringList", "description": "How correctness is demonstrated (tests, checks, reviews)." }
+      }
+    },
+    "workflow": {
+      "description": "Ordered methodology steps for performing the task in this repository. Each item is one imperative step.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "projectConstraints": {
+      "description": "Project-specific constraints, each grounded in evidence.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "evidence"],
+        "properties": {
+          "statement": { "description": "The constraint, e.g. `Use the shared AppError class for all webhook failures`.", "type": "string", "minLength": 1 },
+          "evidence": {
+            "description": "Packet evidence ids (`ev_…`), repository-relative paths present in the packet, or assumption ids (`asm_…`) that ground the statement. Must not be empty.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "verification": {
+      "description": "Concrete checks proving the work is correct, using the repository's own commands where known (e.g. `pnpm test -- payments`).",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "assumptions": {
+      "description": "Ids of documented assumptions (`asm_…`) the skill relies on.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "references": {
+      "description": "Optional supporting files rendered under `references/`. Only include one when it adds material value that does not belong in SKILL.md.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fileName", "title", "content"],
+        "properties": {
+          "fileName": { "description": "Lowercase kebab-case Markdown file name, e.g. `project-conventions.md`.", "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*\\.md$", "maxLength": 128 },
+          "title": { "description": "Human-readable title.", "type": "string", "minLength": 1 },
+          "content": { "description": "Markdown body.", "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

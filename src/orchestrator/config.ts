@@ -1,0 +1,60 @@
+import path from "node:path";
+import { DEFAULT_CONFIG, type DynamicSkillsConfig } from "../contracts/index.js";
+import { dsError, readJsonIfExists } from "../core/index.js";
+
+export const CONFIG_FILE = "dynamic-skills.config.json";
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function merge<T>(base: T, patch: unknown, at: string): T {
+  if (patch === undefined) return base;
+  if (!isObject(base)) {
+    if (typeof patch !== typeof base) {
+      throw dsError("configuration", "orchestrator", `${CONFIG_FILE}: "${at}" must be a ${typeof base}`, {
+        recoverable: true,
+        fallbackAction: `Fix or delete ${CONFIG_FILE}; defaults work without configuration.`,
+      });
+    }
+    return patch as T;
+  }
+  if (!isObject(patch)) {
+    throw dsError("configuration", "orchestrator", `${CONFIG_FILE}: "${at || "root"}" must be an object`, { recoverable: true });
+  }
+  const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+  for (const [k, v] of Object.entries(patch)) {
+    if (!(k in out)) {
+      throw dsError("configuration", "orchestrator", `${CONFIG_FILE}: unknown setting "${at ? `${at}.` : ""}${k}"`, { recoverable: true });
+    }
+    out[k] = merge(out[k], v, at ? `${at}.${k}` : k);
+  }
+  return out as T;
+}
+
+/** §19: defaults work without a config file; a config file may override any subset. */
+export function resolveConfig(patch?: DeepPartial<DynamicSkillsConfig>): DynamicSkillsConfig {
+  const cfg = merge(DEFAULT_CONFIG, patch ?? {}, "");
+  if (cfg.execution.activeBudgetMs <= 0 || cfg.execution.activeBudgetMs > 60_000) {
+    throw dsError("configuration", "orchestrator", "execution.activeBudgetMs must be in (0, 60000]: the 60-second SLA is a hard limit", {
+      recoverable: true,
+    });
+  }
+  if (cfg.execution.maximumClarificationRounds < 0 || cfg.execution.maximumClarificationRounds > 3) {
+    throw dsError("configuration", "orchestrator", "execution.maximumClarificationRounds must be between 0 and 3", { recoverable: true });
+  }
+  if (cfg.generation.targetSkillTokens > cfg.generation.maximumSkillTokens) {
+    throw dsError("configuration", "orchestrator", "generation.targetSkillTokens cannot exceed maximumSkillTokens", { recoverable: true });
+  }
+  if (!cfg.lifecycle.requireApprovalForPersistence) {
+    throw dsError("configuration", "orchestrator", "lifecycle.requireApprovalForPersistence cannot be disabled (§10.4)", { recoverable: true });
+  }
+  return cfg;
+}
+
+export async function loadConfig(root: string): Promise<DynamicSkillsConfig> {
+  const raw = await readJsonIfExists<DeepPartial<DynamicSkillsConfig>>(path.join(root, CONFIG_FILE));
+  return resolveConfig(raw);
+}

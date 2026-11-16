@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dynamic-skills.dev/schemas/context-request.schema.json",
+  "title": "ContextRequest",
+  "description": "A targeted, bounded request for more repository information, issued by the Context Analysis Agent when the Context Packet does not contain a project fact needed for the task. Ask for one specific file, configuration, directory, dependency or document; never request a full repository scan. Provide at least one of `path` or `query`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "reason", "priority"],
+  "properties": {
+    "type": {
+      "description": "Kind of information requested: `source_file` (read one source file), `configuration` (read a config file such as tsconfig.json or a CI workflow), `directory_summary` (list/summarise one directory), `dependency_details` (version and usage of one dependency), `documentation` (read one documentation file).",
+      "enum": ["source_file", "configuration", "directory_summary", "dependency_details", "documentation"]
+    },
+    "path": {
+      "description": "Repository-relative POSIX path (e.g. `src/payments/webhooks.ts`). Must not be absolute and must not contain `..` segments.",
+      "type": "string",
+      "minLength": 1
+    },
+    "query": {
+      "description": "What to look for when no exact path is known, e.g. a dependency name (`stripe`) or a symbol (`createPaymentIntent`).",
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "description": "Why this information is needed for the task, in one sentence. It is shown to the root agent and recorded with the run.",
+      "type": "string",
+      "minLength": 1
+    },
+    "priority": {
+      "description": "`required` when the skill cannot be compiled correctly without it; `optional` when it would only improve the skill.",
+      "enum": ["required", "optional"]
+    }
+  }
+}

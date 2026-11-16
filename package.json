@@ -1,0 +1,49 @@
+{
+  "name": "dynamic-skills",
+  "version": "0.1.0",
+  "description": "Just-in-Time Skill Synthesizer for AI coding agents",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "dynamic-skills": "dist/cli/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "skills",
+    "schemas"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "node node_modules/typescript7/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node node_modules/typescript7/bin/tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "commander": "^15.1.0",
+    "fast-glob": "^3.3.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "typescript7": "npm:typescript@7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "packageManager": "pnpm@12.21.0"
+}
