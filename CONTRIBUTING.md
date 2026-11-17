@@ -6,7 +6,7 @@ Thanks for helping improve dynskills. This guide covers setting up the project, 
 
 dynskills is licensed under the [GNU AGPL v3.0](LICENSE) (`AGPL-3.0-only`).
 
-**Before your first pull request can be merged, you must sign the [Contributor License Agreement](CLA.md).** The CLA Assistant bot will comment on your pull request with a link; signing takes one click with your GitHub account, and it covers all your future contributions.
+**Every pull request must accept the [Contributor License Agreement](CLA.md).** The pull request template has a CLA checkbox: tick it, and keep it ticked. The **CLA agreement** check fails until the box is ticked, and pull requests can't be merged while it fails. Ticking the box covers that contribution and all your later ones.
 
 The CLA explained:
 

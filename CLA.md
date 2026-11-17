@@ -4,12 +4,12 @@ Version 1.0
 
 Thank you for contributing to dynskills (the "Project"). This agreement sets out the terms on which you contribute. Its purpose is to let Prameet Verma, the Project's maintainer, keep the Project under its open-source license and also offer it under other licenses, including commercial ones. You keep the copyright in your contributions.
 
-You accept this agreement by signing it through the CLA Assistant prompt on your first pull request. It then applies to every contribution you submit to the Project, past and future.
+You accept this agreement by ticking the Contributor License Agreement box in the description of your pull request. It then applies to that contribution and to every contribution you submit to the Project afterwards.
 
 ## 1. Definitions
 
 - **"We", "Us" or "Our"** means Prameet Verma and any successor or assignee of the Project, such as a company that takes over its maintenance.
-- **"You" or "Your"** means the individual signing this agreement.
+- **"You" or "Your"** means the individual accepting this agreement.
 - **"Contribution"** means any work of authorship, including code, documentation, tests and assets, that You intentionally submit to Us for inclusion in the Project. Submissions include pull requests, patches, and issue or discussion comments that contain such work. Material You clearly mark "Not a Contribution" is excluded.
 
 ## 2. Copyright license

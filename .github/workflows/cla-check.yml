@@ -1,0 +1,35 @@
+name: CLA
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  cla:
+    name: CLA agreement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the CLA box is ticked
+        env:
+          # Passed through the environment, never interpolated into the script.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: |
+          if [ "$ASSOCIATION" = "OWNER" ]; then
+            echo "Pull request by the repository owner; no CLA needed."
+            exit 0
+          fi
+          case "$AUTHOR" in
+            *"[bot]") echo "Pull request by a bot ($AUTHOR); no CLA needed."; exit 0 ;;
+          esac
+          if printf '%s\n' "$PR_BODY" | grep -Eiq '^[[:space:]]*[-*][[:space:]]*\[x\][[:space:]]*I have read the \[?dynskills Contributor License Agreement'; then
+            echo "CLA accepted by @$AUTHOR in the pull request description."
+          else
+            echo "::error::Tick the Contributor License Agreement box in the pull request description (see CLA.md). If the template was removed, add this line with [x]:"
+            echo "- [x] I have read the dynskills Contributor License Agreement (CLA.md, version 1.0) and I agree to its terms for this contribution and all my future contributions to this project."
+            exit 1
+          fi
