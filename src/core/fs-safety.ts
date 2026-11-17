@@ -27,7 +27,7 @@ export const SENSITIVE_FILE_PATTERNS = [
   "secrets.*",
 ] as const;
 
-/** fast-glob `ignore` patterns implementing the default exclusions + sensitive files. */
+/** Glob form of the default exclusions + sensitive files, for tools that take ignore globs. */
 export const DEFAULT_IGNORE_GLOBS: string[] = [
   ...DEFAULT_EXCLUDED_DIRS.map((d) => `**/${d}/**`),
   ...SENSITIVE_FILE_PATTERNS.map((p) => `**/${p}`),
