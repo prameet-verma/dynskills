@@ -32,6 +32,8 @@ export interface RunMetrics {
   compilationMs?: number;
   evaluationMs?: number;
   activationMs?: number;
+  /** True when the skill came from `compile --deterministic` rather than a host-written draft. */
+  deterministicCompile?: boolean;
   /** Active processing consumed when the run reached a terminal/active state. */
   activeMs?: number;
   timedOut: boolean;

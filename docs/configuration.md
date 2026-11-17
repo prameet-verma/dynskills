@@ -22,7 +22,7 @@ Dynamic Skills works without configuration. To change a default, put a `dynamic-
 | --- | --- | --- | --- |
 | `version` | `"1.0"` | any string | Not read by the code. |
 | `mode` | `"auto"` | `"auto"`, `"explicit"`, `"off"` | `"off"`: `run start` fails with a `configuration` error ("Dynamic Skills is disabled"). `"auto"` and `"explicit"` currently behave the same. |
-| `execution.activeBudgetMs` | `60000` | `0 < n ≤ 60000` | Active-processing budget per run ([bridge-protocol.md](bridge-protocol.md#budget)). Can only be lowered. |
+| `execution.activeBudgetMs` | `120000` | `0 < n ≤ 120000` | Active-processing budget per run ([bridge-protocol.md](bridge-protocol.md#budget)). Can only be lowered. |
 | `execution.maximumClarificationRounds` | `3` | `0`–`3` | Clarification rounds per run. `0` means never ask: open questions become assumptions. |
 | `execution.maximumRevisionAttempts` | `1` | number | Extra `compile` attempts after the first. Total attempts = this + 1. |
 | `discovery.mode` | `"hybrid"` | `"hybrid"`, `"programmatic"` | Not read by the code. |
@@ -54,7 +54,7 @@ Dynamic Skills works without configuration. To change a default, put a `dynamic-
 | A key is not in `DEFAULT_CONFIG` | `unknown setting "<path>"` |
 | A value's JSON type differs from the default's type | `"<path>" must be a <type>` |
 | A section is not an object | `"<path>" must be an object` |
-| `execution.activeBudgetMs` ≤ 0 or > 60000 | `… the 60-second SLA is a hard limit` |
+| `execution.activeBudgetMs` ≤ 0 or > 120000 | `… the 120-second budget is a hard limit` |
 | `execution.maximumClarificationRounds` < 0 or > 3 | `… must be between 0 and 3` |
 | `generation.targetSkillTokens` > `generation.maximumSkillTokens` | `… cannot exceed maximumSkillTokens` |
 | `lifecycle.requireApprovalForPersistence` is `false` | `… cannot be disabled (§10.4)` |

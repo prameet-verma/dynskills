@@ -147,7 +147,7 @@ describe("orchestrator end-to-end", () => {
   it("degrades when the active-processing budget expires, without activating anything", async () => {
     const { root, orch, clock } = await setup();
     const { res, packet } = await startToAnalysis(orch);
-    clock.advance(61_000); // host analysis took too long
+    clock.advance(121_000); // host analysis took too long
     const a = await orch.analyze(res.runId, analysisFor(packet));
     expect(a.status).toBe("degraded");
     expect((a.error as { category: string }).category).toBe("sla_expired");
@@ -225,9 +225,9 @@ describe("state machine and config", () => {
     expect(canTransition("ACTIVE", "DEGRADED")).toBe(false);
   });
   it("validates configuration against hard limits", () => {
-    expect(resolveConfig().execution.activeBudgetMs).toBe(60_000);
+    expect(resolveConfig().execution.activeBudgetMs).toBe(120_000);
     expect(resolveConfig({ discovery: { maximumFiles: 10 } }).discovery.maximumFiles).toBe(10);
-    expect(() => resolveConfig({ execution: { activeBudgetMs: 120_000 } })).toThrow(/hard limit/);
+    expect(() => resolveConfig({ execution: { activeBudgetMs: 121_000 } })).toThrow(/hard limit/);
     expect(() => resolveConfig({ execution: { maximumClarificationRounds: 4 } })).toThrow();
     expect(() => resolveConfig({ lifecycle: { requireApprovalForPersistence: false } })).toThrow();
     expect(() => resolveConfig({ bogus: 1 } as never)).toThrow(/unknown setting/);

@@ -24,7 +24,7 @@ Don't invoke it for small edits, general questions or tasks an existing skill co
 
 Run each step with the `dynskills` CLI. If the command isn't found, stop and ask the user to install Dynamic Skills. Never run it through `npx`, which could download an unrelated package with the same name. Every command prints JSON with `status`, `runId` and `next`. Follow `next`.
 
-The whole generation has **60 seconds of active time**, and the time you spend thinking counts. Only time spent waiting for the user is excluded, so work in compact steps.
+The whole generation has **120 seconds of active time**, and the time you spend thinking counts. Only time spent waiting for the user is excluded, so work in compact steps. Each response's `budget.remainingMs` shows what's left.
 
 1. **Start:**
    `dynskills run start --harness <claude|codex|opencode> --task "<one-paragraph task>"`
@@ -41,7 +41,7 @@ The whole generation has **60 seconds of active time**, and the time you spend t
    - Record each answer as `answered`, `declined` or `skipped`. Don't ask anything that isn't in the request.
    - There are at most 3 rounds. Questions that are declined or still unanswered become documented assumptions.
 4. **Compile (`awaiting_skill_draft`).** Read the prompt at `promptPath`. Write a `SkillDraft` JSON that follows the schema at `schemaPath`, then run `dynskills run compile <runId> --input <file>`.
-   If you're short on time or a draft isn't feasible, run `dynskills run compile <runId> --deterministic` instead.
+   Always write the draft when time allows: it's what makes the skill project-specific. Use `dynskills run compile <runId> --deterministic` only if fewer than 20 seconds remain, or you can't produce a valid draft. Its skill is generic, with fewer project constraints.
    - `revision_required`: fix exactly the listed `hints` and resubmit once.
    - `active`: the skill passed its mandatory checks and is installed for this session.
 5. **Use it.** Apply the returned `instructions`, which are the full `SKILL.md`, to the original task right away. If `requiresReload` is true, also follow `invocationHint` so the harness registers the skill. Then resume and finish the user's task.

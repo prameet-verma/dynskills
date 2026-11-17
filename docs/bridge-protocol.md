@@ -200,7 +200,7 @@ Mutating commands take an exclusive per-run lock: `.lock` in the run directory, 
 
 ## Budget
 
-Each run has an active-processing budget (`execution.activeBudgetMs`, default and maximum 60,000 ms) measured on the OS monotonic clock across processes ([ADR-013](adr/013-cross-process-budget.md)).
+Each run has an active-processing budget (`execution.activeBudgetMs`, default and maximum 120,000 ms; [ADR-018](adr/018-two-minute-budget.md)) measured on the OS monotonic clock across processes ([ADR-013](adr/013-cross-process-budget.md)).
 
 - **What counts:** everything from `run start` onwards, including the time between commands, when the host LLM is reading the packet and writing JSON. Process start-up counts too.
 - **What does not count:** the wait for the user. The budget pauses when a run enters `awaiting_clarification` and resumes on the next valid `clarify`. An invalid `clarify` keeps it paused. Pauses never reset the budget.

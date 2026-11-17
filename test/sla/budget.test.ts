@@ -44,14 +44,14 @@ afterEach(() => {
 describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
   it("defaults to 60 s / 3 rounds", () => {
     const b = new ExecutionBudget();
-    expect(b.maximumMs).toBe(60_000);
+    expect(b.maximumMs).toBe(120_000);
     expect(b.maximumRounds).toBe(3);
-    expect(b.snapshot()).toMatchObject({ maximumMs: 60_000, consumedMs: 0, roundsUsed: 0, maximumRounds: 3 });
+    expect(b.snapshot()).toMatchObject({ maximumMs: 120_000, consumedMs: 0, roundsUsed: 0, maximumRounds: 3 });
   });
 
   it("1. generation finishing within 60 s stays within budget", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     advance(20_000);
     expect(b.consumedMs()).toBe(20_000);
@@ -63,7 +63,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("4. human clarification pauses the timer", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     advance(10_000);
     b.pause("human_clarification");
@@ -75,7 +75,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("5. the SLA resumes correctly after the human answers", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     advance(10_000);
     b.pauseForHuman();
@@ -89,7 +89,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("6/7. multiple human waits do not reset the total; three rounds are allowed", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     for (let round = 1; round <= 3; round++) {
       advance(10_000);
@@ -105,7 +105,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("8. a fourth clarification round is rejected", () => {
     const { clock } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     for (let i = 0; i < 3; i++) {
       b.pause("human_clarification");
@@ -118,7 +118,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("rejects invalid pause/resume/start transitions", () => {
     const { clock } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     b.start(); // idempotent while running
     expectDsError(() => b.pause("subagent" as "human_clarification"), "invalid_state");
@@ -132,7 +132,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("9. declined questions become assumptions while the budget is paused, without resetting it", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     const m = new ClarificationManager();
     b.start();
     advance(12_000);
@@ -150,7 +150,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("10. internal subagent delays count towards active processing", async () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     const subagent = new Promise<void>((resolve) => setTimeout(resolve, 25_000));
     advance(25_000); // subagent runs; nobody calls consume()
@@ -162,7 +162,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("remaining time never goes negative and expiry throws sla_expired", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget({ ...clock, runId: "run_9" });
+    const b = new ExecutionBudget({ ...clock, runId: "run_9", maximumMs: 60_000 });
     b.start();
     advance(70_000);
     expect(b.remainingMs()).toBe(0);
@@ -216,7 +216,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("deadlineAt projects wall time + remaining budget", () => {
     const { clock, advance } = fakeClock();
-    const b = new ExecutionBudget(clock);
+    const b = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     b.start();
     advance(15_000);
     expect(b.deadlineAt()).toBe(new Date(clock.wallNow() + 45_000).toISOString());
@@ -224,7 +224,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("snapshot round-trips across processes on the same boot (time between processes counts while running)", () => {
     const { clock, advance } = fakeClock();
-    const a = new ExecutionBudget(clock);
+    const a = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     a.start();
     advance(10_000);
     const snap = JSON.parse(JSON.stringify(a.snapshot())) as BudgetSnapshot;
@@ -236,7 +236,7 @@ describe("ExecutionBudget (§6.4, §15.4, §18.5)", () => {
 
   it("a paused snapshot stays paused across processes and keeps its round count", () => {
     const { clock, advance } = fakeClock();
-    const a = new ExecutionBudget(clock);
+    const a = new ExecutionBudget({ ...clock, maximumMs: 60_000 });
     a.start();
     advance(8_000);
     a.pause("human_clarification");

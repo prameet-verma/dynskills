@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { ClarificationRequest, ContextPacket, HarnessId } from "../contracts/index.js";
+import { DEFAULT_ACTIVE_BUDGET_MS, type ClarificationRequest, type ContextPacket, type HarnessId } from "../contracts/index.js";
 import { errorMessage, isoNow, stopwatch } from "../core/index.js";
 import { Orchestrator, type BridgeResponse, type RunMetrics } from "../orchestrator/index.js";
 import { standInAnalysis } from "./stand-in-host.js";
 
 /** §15.1 / ADR-007: hard active-processing budget, checked per scenario end to end. */
-export const SLA_MS = 60_000;
+export const SLA_MS = DEFAULT_ACTIVE_BUDGET_MS;
 
 /** Upper bound on bridge commands per scenario (start + analyze/clarify/compile loops). */
 const MAX_BRIDGE_STEPS = 16;

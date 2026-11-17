@@ -20,14 +20,15 @@ Reference documentation for Dynamic Skills, a TypeScript tool that generates Age
 
 ## Other references
 
-- [Architecture Decision Records](adr/README.md) — ADR-010 to ADR-017 (ADR-001 to ADR-009 are in the design document, which isn't public):
+- [Architecture Decision Records](adr/README.md) — ADR-010 to ADR-018 (ADR-001 to ADR-009 are in the design document, which isn't public):
   - [010](adr/010-single-package.md) One installable package, one folder per logical module
   - [011](adr/011-typescript-toolchain.md) Build with TypeScript 7; lint with typescript-eslint on TypeScript 6
   - [012](adr/012-cli-bridge.md) A JSON request–response CLI bridge with persisted run state
-  - [013](adr/013-cross-process-budget.md) The 60-second budget uses the OS monotonic clock across processes
+  - [013](adr/013-cross-process-budget.md) The active-processing budget uses the OS monotonic clock across processes
   - [014](adr/014-activation-and-revisions.md) Session activation writes to a watched directory and injects instructions; revisions use injection only
   - [015](adr/015-p0-evidence-kept.md) P0 evidence is never dropped, even past the packet's token budget
   - [016](adr/016-static-evaluation-stand-ins.md) Static baseline comparison and a deterministic stand-in host for benchmarks
   - [017](adr/017-skill-files-are-not-context.md) Installed skill files are excluded from freshness and change detection
-- [Performance benchmarks](../benchmarks/README.md) — how `dynskills benchmark` measures §18.7 metrics and the 60 s SLA.
+  - [018](adr/018-two-minute-budget.md) The active-processing budget is 120 seconds, and the deterministic compile is a last resort
+- [Performance benchmarks](../benchmarks/README.md) — how `dynskills benchmark` measures §18.7 metrics and the 120 s budget.
 - [JSON Schemas](../schemas/) — what the host must write for `analyze`, `clarify` and `compile`.

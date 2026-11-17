@@ -68,3 +68,38 @@ describe("regressions found in the docs review", () => {
     expect(() => resolveConfig({ evaluation: { baselineComparison: "weekly" as never } })).toThrow(/baselineComparison/);
   });
 });
+
+describe("deterministic compile grounding and guidance (ADR-018)", () => {
+  it("turns observed analysis facts into grounded constraints even when stated constraints don't echo them", async () => {
+    const { orch } = await setup();
+    const s = await orch.start({ task: { description: TASK } });
+    const packet = await readPacket(s.packetPath as string);
+    const analysis = analysisFor(packet, {
+      // Task decisions whose wording matches no evidence: previously this left zero grounded constraints.
+      taskContext: { relevantComponents: ["src/payments/gateway.ts"], existingImplementations: [], constraints: ["Refunds are full only for v1", "Skip partial captures"] },
+      architecture: { patterns: [], moduleStructure: [], conventions: [], dependencies: [] },
+      evidence: [
+        { claim: "PaymentGateway wraps every Stripe call and maps failures with PaymentError.from", source: "src/payments/gateway.ts", type: "observed" },
+        { claim: "routes.ts validates request bodies with zod schemas", source: "src/payments/routes.ts", type: "observed" },
+        { claim: "Refund support likely belongs next to charge in the gateway", source: "src/payments/gateway.ts", type: "inferred" },
+      ],
+    });
+    const a = await orch.analyze(s.runId, analysis);
+    expect(a.status).toBe("awaiting_skill_draft");
+    const c = await orch.compile(s.runId, { deterministic: true });
+    expect(c.status, JSON.stringify(c.evaluation)).toBe("active");
+    expect((c.evaluation as { checks: Record<string, string> }).checks.grounding).toBe("pass");
+    expect(c.instructions).toMatch(/PaymentGateway wraps every Stripe call/);
+    expect(c.instructions).toMatch(/- routes\.ts validates request bodies with zod schemas/); // file names keep their case
+    expect(c.instructions).not.toMatch(/likely belongs next to charge/); // inferred claims are never constraints
+  });
+
+  it("tells the host how much budget is left and to prefer a draft", async () => {
+    const { orch } = await setup();
+    const s = await orch.start({ task: { description: TASK } });
+    const packet = await readPacket(s.packetPath as string);
+    const a = await orch.analyze(s.runId, analysisFor(packet));
+    expect(a.next).toMatch(/\d+ s of the active budget remain, which is enough for a draft/);
+    expect(a.next).toMatch(/--deterministic` only if fewer than 20 s remain/);
+  });
+});

@@ -1,6 +1,6 @@
 import type { ContextPacket, GroundedStatement, SkillCompilationRequest, SkillDraft } from "../contracts/index.js";
 import { SCHEMA_VERSION } from "../contracts/index.js";
-import { collectKnownReferences, findGroundingRefs } from "./grounding.js";
+import { collectKnownReferences, findGroundingRefs, normalizeRefPath } from "./grounding.js";
 import { toSkillName, uniqueSkillName } from "./name.js";
 import { capitalize, collapseWhitespace, significantWords, stripTrailingPunctuation, truncateAtWord } from "./text.js";
 
@@ -114,6 +114,21 @@ export function compileDeterministicDraft(request: SkillCompilationRequest, pack
     if (projectConstraints.length >= MAX_CONSTRAINTS) break;
     const evidence = findGroundingRefs(statement, a.evidence, packet.evidence, known);
     if (evidence.length > 0) projectConstraints.push({ statement: capitalize(sentence(statement)), evidence });
+  }
+  // Facts the host read directly are project constraints in their own right, already tied to a
+  // source. Without this, an analysis whose stated constraints don't echo its evidence yields a
+  // skill with no grounded constraints at all.
+  const seen = new Set(projectConstraints.map((c) => c.statement.toLowerCase()));
+  for (const e of a.evidence) {
+    if (projectConstraints.length >= MAX_CONSTRAINTS) break;
+    if (e.type !== "observed") continue;
+    const ref = known.evidenceIds.has(e.source) ? e.source : known.paths.has(normalizeRefPath(e.source)) ? normalizeRefPath(e.source) : undefined;
+    const text = sentence(collapseWhitespace(e.claim));
+    // Don't capitalise a leading identifier or file name ("content.js", "fetchUser", "src/app").
+    const statement = /^[a-z]+\b(?![./_-])/.test(text) && !/^[a-z]+[A-Z]/.test(text) ? capitalize(text) : text;
+    if (ref === undefined || statement.length === 0 || seen.has(statement.toLowerCase())) continue;
+    seen.add(statement.toLowerCase());
+    projectConstraints.push({ statement, evidence: [ref] });
   }
 
   const scopePhrase = components.length > 0 ? components.join(", ") : "the task scope";

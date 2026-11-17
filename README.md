@@ -78,7 +78,7 @@ How the work is split:
 
 Rules every run follows:
 
-- **Time budget.** Each run has a hard limit of **60 s of active processing**, measured on a monotonic clock that is carried across CLI calls. Time spent waiting for the user to answer is not counted.
+- **Time budget.** Each run has a hard limit of **120 s of active processing**, measured on a monotonic clock that is carried across CLI calls. Time spent waiting for the user to answer is not counted.
 - **Expiry.** If the budget runs out, the run degrades gracefully and never skips its checks.
 - **Evaluation gate.** A skill that fails a mandatory evaluation is never activated.
 

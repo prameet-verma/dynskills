@@ -330,7 +330,9 @@ export interface Assumption {
   status: "declined" | "skipped" | "round_limit_reached";
 }
 
-export const DEFAULT_ACTIVE_BUDGET_MS = 60_000 as const;
+export const DEFAULT_ACTIVE_BUDGET_MS = 120_000 as const;
+/** Below this much remaining budget, the deterministic compile is the right fallback (ADR-018). */
+export const DETERMINISTIC_COMPILE_THRESHOLD_MS = 20_000 as const;
 
 /** Serializable budget state, persisted with the run so pauses survive process boundaries. */
 export interface BudgetSnapshot {

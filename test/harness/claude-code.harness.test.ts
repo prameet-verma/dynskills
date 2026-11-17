@@ -107,7 +107,8 @@ describe.skipIf(!ENABLED || !HAS_CLAUDE)("Claude Code harness (real session)", (
     expect(done?.persistence?.choice).toBe("project");
     expect(existsSync(path.join(env.root, ".claude/skills", done?.skill?.name ?? "", "SKILL.md"))).toBe(true);
     expect(existsSync(path.join(env.root, ".dynamic-skills/bundles", done?.skill?.name ?? "", "bundle.json"))).toBe(true);
-    expect(done?.metrics.activeMs ?? Infinity).toBeLessThanOrEqual(60_000);
+    expect(done?.metrics.activeMs ?? Infinity).toBeLessThanOrEqual(120_000);
+    expect(done?.metrics.deterministicCompile, "the agent skipped the draft and compiled deterministically").not.toBe(true);
   }, TIMEOUT);
 
   it("clarification round + personal persistence", async () => {
@@ -132,7 +133,8 @@ describe.skipIf(!ENABLED || !HAS_CLAUDE)("Claude Code harness (real session)", (
     expect(done?.history.some((h) => h.to === "CLARIFICATION_PENDING")).toBe(true);
     expect(done?.persistence?.choice).toBe("personal");
     expect(existsSync(path.join(env.home, ".claude/skills", done?.skill?.name ?? "", "SKILL.md"))).toBe(true);
-    expect(done?.metrics.activeMs ?? Infinity).toBeLessThanOrEqual(60_000);
+    expect(done?.metrics.activeMs ?? Infinity).toBeLessThanOrEqual(120_000);
+    expect(done?.metrics.deterministicCompile, "the agent skipped the draft and compiled deterministically").not.toBe(true);
   }, TIMEOUT);
 
   it("autonomous invocation: the agent chooses the bootstrap on its own for a specialised task", async () => {

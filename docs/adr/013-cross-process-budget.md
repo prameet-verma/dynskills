@@ -1,4 +1,6 @@
-# ADR-013: The 60-second budget uses the OS monotonic clock across processes
+# ADR-013: The active-processing budget uses the OS monotonic clock across processes
+
+> The budget was 60 seconds when this was written; [ADR-018](018-two-minute-budget.md) raised it to 120 seconds.
 
 **Status:** Accepted
 

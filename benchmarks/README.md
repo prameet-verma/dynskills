@@ -88,12 +88,12 @@ A real run has two steps that belong to the host agent's own LLM: analysing the 
 
 So, by default, **host LLM time is excluded**, and the measured `activeMs` is the core's own overhead.
 
-- **Simulating the host.** `--host-latency-ms N` sleeps N ms before each host turn (analyze and compile). That time runs on the SLA clock and counts against the 60 s budget, just as real model time does (§15.4: all LLM time consumes the budget). The §15.1 envelope gives the host about 15 s for analysis and 15 s for compilation, so `--host-latency-ms 15000` is a realistic worst case.
+- **Simulating the host.** `--host-latency-ms N` sleeps N ms before each host turn (analyze and compile). That time runs on the SLA clock and counts against the 120 s budget, just as real model time does (§15.4: all LLM time consumes the budget). The §15.1 envelope gives the host about 15 s for analysis and 15 s for compilation, so `--host-latency-ms 15000` is a realistic worst case.
 - **What it cannot measure.** It cannot measure the quality of real model output, the extra rounds it causes (invalid input, revisions, targeted discovery), or real token consumption by the host model.
 
-## The 60 s SLA is an end-to-end invariant
+## The 120 s budget is an end-to-end invariant
 
-§18.7: *"The 60-second SLA must be tested as an end-to-end invariant, not inferred by adding component-level averages."*
+§18.7: *"The 60-second SLA must be tested as an end-to-end invariant, not inferred by adding component-level averages."* The budget is now 120 seconds ([ADR-018](../docs/adr/018-two-minute-budget.md)); the same rule applies.
 
 - `slaViolations` is computed per scenario. It uses that run's own end-to-end active time on the orchestrator's monotonic, pause-aware budget clock, plus its `timedOut` flag. It is never derived by adding up per-stage averages or percentiles.
 - The per-stage columns are there for diagnosis only. The stage percentiles in the summary come from different runs, so they do not add up to any real run.

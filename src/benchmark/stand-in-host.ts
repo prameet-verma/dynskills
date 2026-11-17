@@ -9,7 +9,7 @@ import type { AnalysisEvidence, ContextAnalysisResult, ContextPacket } from "../
  *
  * - **LLM time is excluded.** This function runs in microseconds, so measured active time covers only the
  *   core's work (discovery, validation, gap analysis, compilation, evaluation, activation) unless the
- *   benchmark simulates host latency (`hostLatencyMs`), which then counts against the 60 s SLA.
+ *   benchmark simulates host latency (`hostLatencyMs`), which then counts against the 120 s budget.
  * - **Analysis quality is a floor, not a model.** It restates packet facts; it never invents unknowns,
  *   context requests or task-specific insight. It does report runtime-version conflicts the packet already
  *   shows, so the clarification path can still be exercised.

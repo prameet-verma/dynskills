@@ -17,5 +17,5 @@ If the task above is empty, ask the user which task the skill is for, then conti
 2. Start the run with `--force-generate`, so an existing skill is not reused:
    `dynskills run start --harness claude --force-generate --task "<the task above, as one paragraph>"`
    `dynskills` is on your Bash PATH through this plugin. If it isn't found, stop and ask the user to install Dynamic Skills; never run it through `npx`.
-3. Continue with the remaining protocol steps (analyse, clarify, compile, use, persistence) exactly as the bootstrap describes, including its fallback rules and the 60-second budget.
+3. Continue with the remaining protocol steps (analyse, clarify, compile, use, persistence) exactly as the bootstrap describes, including its fallback rules and the 120-second budget.
 4. When the skill is active, apply it and finish the user's task. Ask before persisting it.

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { DEFAULT_CONFIG, type DynamicSkillsConfig } from "../contracts/index.js";
+import { DEFAULT_ACTIVE_BUDGET_MS, DEFAULT_CONFIG, type DynamicSkillsConfig } from "../contracts/index.js";
 import { dsError, readJsonIfExists } from "../core/index.js";
 
 export const CONFIG_FILE = "dynamic-skills.config.json";
@@ -37,8 +37,8 @@ function merge<T>(base: T, patch: unknown, at: string): T {
 /** §19: defaults work without a config file; a config file may override any subset. */
 export function resolveConfig(patch?: DeepPartial<DynamicSkillsConfig>): DynamicSkillsConfig {
   const cfg = merge(DEFAULT_CONFIG, patch ?? {}, "");
-  if (cfg.execution.activeBudgetMs <= 0 || cfg.execution.activeBudgetMs > 60_000) {
-    throw dsError("configuration", "orchestrator", "execution.activeBudgetMs must be in (0, 60000]: the 60-second SLA is a hard limit", {
+  if (cfg.execution.activeBudgetMs <= 0 || cfg.execution.activeBudgetMs > DEFAULT_ACTIVE_BUDGET_MS) {
+    throw dsError("configuration", "orchestrator", `execution.activeBudgetMs must be in (0, ${DEFAULT_ACTIVE_BUDGET_MS}]: the ${DEFAULT_ACTIVE_BUDGET_MS / 1000}-second budget is a hard limit`, {
       recoverable: true,
     });
   }

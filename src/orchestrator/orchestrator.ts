@@ -5,6 +5,7 @@ import {
   type ActivationResult,
   type Assumption,
   type BehaviouralEvalCase,
+  DETERMINISTIC_COMPILE_THRESHOLD_MS,
   type BehaviouralEvalResult,
   type CanonicalBundleRecord,
   type ContextAnalysisResult,
@@ -439,6 +440,7 @@ export class Orchestrator {
 
       let draft: SkillDraft;
       if (input.deterministic) {
+        record.metrics.deterministicCompile = true;
         draft = compileDeterministicDraft(request, packet);
       } else {
         record.metrics.hostSubmissions++;
@@ -843,7 +845,7 @@ export class Orchestrator {
       record,
       budget,
       "awaiting_skill_draft",
-      `Read the prompt at promptPath, write a SkillDraft JSON, and submit it with \`dynskills run compile ${record.identity.runId} --input <file>\`. If drafting is not feasible within the budget, run \`dynskills run compile ${record.identity.runId} --deterministic\`.`,
+      `Read the prompt at promptPath, write a SkillDraft JSON, and submit it with \`dynskills run compile ${record.identity.runId} --input <file>\`. ${draftGuidance(budget.remainingMs(), record.identity.runId)}`,
       { promptPath, schemaPath: schemaPath("skill-draft"), assumptions: record.assumptions, gaps: gaps.gaps },
     );
   }
@@ -877,7 +879,7 @@ export class Orchestrator {
       record,
       budget,
       "revision_required",
-      `Revise the SkillDraft to address every hint and resubmit once with \`dynskills run compile ${record.identity.runId} --input <file>\`, or use --deterministic.`,
+      `Revise the SkillDraft to address every hint and resubmit once with \`dynskills run compile ${record.identity.runId} --input <file>\`. ${draftGuidance(budget.remainingMs(), record.identity.runId)}`,
       { hints, ...(report ? { evaluation: summarizeReport(report) } : {}), attemptsLeft: maxAttempts - record.compileAttempts },
     );
   }
@@ -1174,6 +1176,18 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const c of process.stdin) chunks.push(c as Buffer);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/**
+ * Tells the host how much budget is left and when the deterministic compile is acceptable.
+ * Without numbers, agents took the deterministic path with most of the budget unused (ADR-018).
+ */
+function draftGuidance(remainingMs: number, runId: string): string {
+  const seconds = Math.floor(remainingMs / 1000);
+  if (remainingMs < DETERMINISTIC_COMPILE_THRESHOLD_MS) {
+    return `Only ${seconds} s of the active budget remain: if you cannot submit a draft right away, run \`dynskills run compile ${runId} --deterministic\` instead.`;
+  }
+  return `${seconds} s of the active budget remain, which is enough for a draft. Write the draft: it produces a project-specific skill. Use \`--deterministic\` only if fewer than ${DETERMINISTIC_COMPILE_THRESHOLD_MS / 1000} s remain or you cannot produce a valid draft; it gives a generic skill with fewer project constraints.`;
 }
 
 /** The harness-specific reload step (e.g. Claude Code's /reload-skills), carried in the activation message. */
