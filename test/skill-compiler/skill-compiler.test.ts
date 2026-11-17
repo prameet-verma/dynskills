@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SkillDraft } from "../../src/contracts/index.js";
 import { DEFAULT_CONFIG, SCHEMA_VERSION } from "../../src/contracts/index.js";
-import { METADATA_NAMESPACE, estimateTokens } from "../../src/core/index.js";
+import { GENERATOR_VERSION, METADATA_NAMESPACE, estimateTokens } from "../../src/core/index.js";
 import {
   applyDeterministicFixes,
   buildCompilationPrompt,
@@ -188,7 +188,7 @@ describe("renderSkill", () => {
     expect(Object.keys(parsed.frontmatter ?? {})).toEqual(["name", "description", "metadata"]);
     expect(parsed.frontmatter?.metadata).toEqual({
       [`${METADATA_NAMESPACE}.run-id`]: RUN_ID,
-      [`${METADATA_NAMESPACE}.generator-version`]: "0.1.0",
+      [`${METADATA_NAMESPACE}.generator-version`]: GENERATOR_VERSION,
       [`${METADATA_NAMESPACE}.skill-version`]: "1.0.0",
       [`${METADATA_NAMESPACE}.context-fingerprint`]: "123456",
     });

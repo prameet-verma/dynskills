@@ -1,6 +1,6 @@
 {
   "name": "dynskills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate checked, repository-specific Agent Skills just in time when existing skills don't cover a task.",
   "license": "AGPL-3.0-only",
   "keywords": [

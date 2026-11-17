@@ -95,7 +95,7 @@ Follow the steps in [docs/adapters.md](docs/adapters.md#adding-a-harness). Every
 
 Publishing a GitHub release publishes the same version to npm automatically, through `.github/workflows/release.yml`. The workflow uses npm trusted publishing, so no npm token is stored in the repository, and npm shows a provenance badge linking each version to the workflow run that built it.
 
-1. Bump the version: `npm version patch --no-git-tag-version` (or `minor`/`major`). Commit and push to `main`.
+1. Bump the version: `npm version patch --no-git-tag-version` (or `minor`/`major`). This also updates every other copy of the version (the CLI, plugin manifests and bootstrap skills) through `scripts/sync-version.mjs`. Commit and push to `main`.
 2. Wait for the **CI** checks on that commit to pass.
 3. Create a GitHub release whose tag is `v` plus the version, for example `v0.2.0`, pointing at that commit:
    ```bash

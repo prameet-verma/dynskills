@@ -1,6 +1,6 @@
 {
   "name": "dynskills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dynamic Skills: a just-in-time skill synthesizer for AI coding agents (Claude Code, Codex, OpenCode)",
   "keywords": [
     "agent-skills",
@@ -52,7 +52,8 @@
     "bench": "pnpm build && node dist/cli/index.js benchmark",
     "install:local": "sh scripts/install-local.sh",
     "uninstall:local": "sh scripts/install-local.sh --uninstall",
-    "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "version": "node scripts/sync-version.mjs && git add src/core/version.ts plugins skills"
   },
   "dependencies": {
     "ajv": "^8.20.0",
