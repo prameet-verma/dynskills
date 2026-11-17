@@ -3,7 +3,7 @@ name: dynamic-skill-bootstrap
 description: Identify missing task-specific expertise and invoke Dynamic Skills to discover live repository context, compile and evaluate a portable skill. Use when an existing skill or repository instructions are insufficient for a complex or specialised task.
 metadata:
   dynamic-skills.role: bootstrap
-  dynamic-skills.generator-version: 0.1.1
+  dynamic-skills.generator-version: 0.1.2
 ---
 
 # Dynamic Skill Bootstrap
