@@ -60,8 +60,15 @@ function deriveVerification(request: SkillCompilationRequest, packet: ContextPac
   const pm = a.technology.packageManagers[0] ?? packet.technology.packageManagers[0];
   const testTool = Object.keys(TEST_RUNNERS).find((t) => new RegExp(`\\b${t}\\b`).test(haystack));
   const out: string[] = [];
-  if (testTool) {
-    const cmd = TEST_RUNNERS[testTool] ?? (pm ? `${pm} test` : undefined);
+  // Prefer commands discovery actually found: a "test" script, then a documented or node:test command.
+  const testEvidence = packet.evidence.filter((e) => e.kind === "test_configuration");
+  const valueOf = (v: unknown): Record<string, unknown> => (v !== null && typeof v === "object" ? (v as Record<string, unknown>) : {});
+  const hasTestScript = testEvidence.some((e) => valueOf(e.value)["script"] === "test");
+  const documented = testEvidence.map((e) => valueOf(e.value)["command"]).find((c, i) => typeof c === "string" && valueOf(testEvidence[i]?.value)["script"] === undefined);
+  if (!hasTestScript && typeof documented === "string") {
+    out.push(`Run the tests with \`${documented}\` and confirm new and existing tests pass.`);
+  } else if (testTool) {
+    const cmd = TEST_RUNNERS[testTool] ?? (pm && hasTestScript ? `${pm} test` : undefined);
     out.push(
       cmd
         ? `Run the test suite (\`${cmd}\`; observed test tooling: ${testTool}) and confirm new and existing tests pass.`

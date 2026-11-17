@@ -103,3 +103,63 @@ describe("deterministic compile grounding and guidance (ADR-018)", () => {
     expect(a.next).toMatch(/--deterministic` only if fewer than 20 s remain/);
   });
 });
+
+describe("test commands (no test script, node:test)", () => {
+  async function nodeTestRepo() {
+    const { mkdtemp, mkdir: mk, writeFile: wf } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const root = await mkdtemp(path.join(tmpdir(), "ds-nodetest-"));
+    const home = await mkdtemp(path.join(tmpdir(), "ds-nodetest-home-"));
+    const files: Record<string, string> = {
+      "package.json": JSON.stringify({ name: "ext", version: "1.0.0", dependencies: {} }),
+      "package-lock.json": "{}",
+      "content/inject.js": "export function handleRules(rules) { return rules; }\n",
+      "test/inject.test.js": "// Run: node --test test/inject.test.js\nconst test = require('node:test');\ntest('rules', () => {});\n",
+    };
+    for (const [rel, content] of Object.entries(files)) {
+      await mk(path.dirname(path.join(root, rel)), { recursive: true });
+      await wf(path.join(root, rel), content);
+    }
+    return { root, orch: new Orchestrator({ root, harness: "claude", homeDir: home, sessionId: "sess_nt", env: { PATH: "" } }) };
+  }
+  const task = { description: "Wire the script engine into content/inject.js", scope: ["content/inject.js"] };
+
+  it("discovers the missing test script and the node:test run command", async () => {
+    const { orch } = await nodeTestRepo();
+    const s = await orch.start({ task, forceGenerate: true });
+    const claims = (await readPacket(s.packetPath as string)).evidence.map((e) => e.claim).join("\n");
+    expect(claims).toMatch(/package\.json has no "test" script, so `npm test` fails/);
+    expect(claims).toMatch(/Run command documented in inject\.test\.js: node --test test\/inject\.test\.js/);
+    expect(claims).toMatch(/Node's built-in test runner \(node:test\)/);
+  });
+
+  it("deterministic skills use the discovered command, and drafts citing `npm test` must be revised", async () => {
+    const { orch } = await nodeTestRepo();
+    const s = await orch.start({ task, forceGenerate: true });
+    const packet = await readPacket(s.packetPath as string);
+    const ev = packet.evidence.find((e) => e.source === "content/inject.js")?.id ?? packet.evidence[0]?.id ?? "package.json";
+    const analysis = analysisFor(packet, {
+      technology: { languages: ["JavaScript"], frameworks: [], runtimes: ["node"], packageManagers: ["npm"] },
+      architecture: { patterns: [], moduleStructure: ["content"], conventions: [], dependencies: [] },
+      taskContext: { relevantComponents: ["content/inject.js"], existingImplementations: [], constraints: [] },
+      evidence: [{ claim: "inject.js exports handleRules", source: "content/inject.js", type: "observed" }],
+    });
+    expect((await orch.analyze(s.runId, analysis)).status).toBe("awaiting_skill_draft");
+    const bad = await orch.compile(s.runId, {
+      draft: {
+        ...draftFor(packet),
+        name: "inject-script-bridge",
+        description: "Wire the script engine into content/inject.js. Use when changing content/inject.js.",
+        projectConstraints: [{ statement: "inject.js exports handleRules", evidence: [ev] }],
+        verification: ["Run npm test and confirm tests pass"],
+      },
+    });
+    expect(bad.status).toBe("revision_required");
+    expect((bad.hints as string[]).join("\n")).toMatch(/`npm test` runs the "test" script, but package\.json has no such script/);
+
+    const c = await orch.compile(s.runId, { deterministic: true });
+    expect(c.status, JSON.stringify(c.evaluation)).toBe("active");
+    expect(c.instructions).toMatch(/Run the tests with `node --test test\/inject\.test\.js`/);
+    expect(c.instructions).not.toMatch(/npm test/);
+  });
+});

@@ -486,6 +486,7 @@ export class Orchestrator {
         repositoryInstructions: packet.instructions.map((i) => i.content ?? "").filter(Boolean),
         policy: request.compilationPolicy,
         evidenceClaims: registry.all().map((e) => `${e.claim} ${typeof e.value === "object" ? JSON.stringify(e.value) : String(e.value ?? "")}`),
+        ...(await rootPackageScripts(record.root)),
       };
       const evalCase = createBehaviouralEvalCase({ task: record.task, analysis, draft: fixed.draft });
       await writeJson(this.runs.fileFor(record, "evalCase"), evalCase);
@@ -1176,6 +1177,17 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const c of process.stdin) chunks.push(c as Buffer);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/** Scripts from the root package.json, for the unknown-script check; nothing when there's no package.json. */
+async function rootPackageScripts(root: string): Promise<{ packageScripts?: Record<string, string> }> {
+  const pkg = await readJsonIfExists<{ scripts?: unknown }>(path.join(root, "package.json")).catch(() => undefined);
+  if (pkg === undefined || pkg === null || typeof pkg !== "object") return {};
+  const scripts: Record<string, string> = {};
+  if (pkg.scripts !== null && typeof pkg.scripts === "object") {
+    for (const [k, v] of Object.entries(pkg.scripts as Record<string, unknown>)) if (typeof v === "string") scripts[k] = v;
+  }
+  return { packageScripts: scripts };
 }
 
 /**

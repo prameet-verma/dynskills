@@ -25,6 +25,8 @@ export interface EvalContext {
   expectedDirName?: string;
   /** Discovery evidence claims (e.g. "Uses vitest 2.0.5"), so the scope check recognises discovered dependencies. */
   evidenceClaims?: string[];
+  /** Scripts in the root package.json; undefined when there is none. Commands that run a missing script fail grounding. */
+  packageScripts?: Readonly<Record<string, string>>;
 }
 
 export type GenerationCheck = (skill: GeneratedSkill, ctx: EvalContext) => EvalResult;

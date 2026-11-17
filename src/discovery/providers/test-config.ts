@@ -43,6 +43,14 @@ export class TestConfigProvider implements DiscoveryProvider {
     }
     for (const { path, data } of await loadPackageJsons(ctx)) {
       const scripts = stringRecord(data.scripts);
+      if (path === "package.json" && scripts["test"] === undefined) {
+        // Without this, hosts guess `npm test`, which fails when the script doesn't exist.
+        out.push(
+          ev("test_configuration", path, 'package.json has no "test" script, so `npm test` fails; run the test runner directly', {
+            value: { missingScript: "test" },
+          }),
+        );
+      }
       for (const [name, cmd] of Object.entries(scripts)) {
         if (!/^(test|e2e)(:|$)|^test-/.test(name)) continue;
         out.push(ev("test_configuration", path, `Test script "${name}": ${cmd}`, { value: { script: name, command: cmd }, excerpt: `"${name}": "${cmd}"` }));
@@ -60,6 +68,7 @@ export class TestConfigProvider implements DiscoveryProvider {
       const text = await readRepoFile(ctx, p, 64 * 1024);
       if (text && /^\[tool:pytest\]/m.test(text)) out.push(ev("test_configuration", p, "pytest configured in setup.cfg [tool:pytest]", { value: { tool: "pytest" } }));
     }
+    out.push(...(await jsTestRunnerEvidence(ctx, ev)));
     for (const { re, label, runner } of TEST_FILE_GROUPS) {
       const files = filesMatching(ctx, re);
       if (!files.length) continue;
@@ -72,4 +81,35 @@ export class TestConfigProvider implements DiscoveryProvider {
     }
     return out;
   }
+}
+
+const JS_TEST_FILE = /\.(test|spec)\.(js|mjs|cjs|ts|mts|cts)$/;
+const NODE_TEST_IMPORT = /(?:require\(\s*|from\s+|import\s+)["']node:test["']/;
+/** A "how to run" comment at the top of a test file, e.g. `// Run: node --test test/a.test.js`. */
+const RUN_HINT = /^\s*(?:\/\/|#|\*|\/\*)\s*Run(?:\s+with)?\s*:\s*`?([^`\n]+?)`?\s*(?:\*\/)?\s*$/im;
+
+/**
+ * Looks inside a few JavaScript/TypeScript test files for Node's built-in test runner and for a
+ * documented run command. Config files and package.json scripts don't reveal either.
+ */
+async function jsTestRunnerEvidence(ctx: DiscoveryContext, ev: ReturnType<typeof evidenceFactory>): Promise<DiscoveryEvidence[]> {
+  const out: DiscoveryEvidence[] = [];
+  const files = filesMatching(ctx, JS_TEST_FILE).filter((f) => depth(f) <= 4).slice(0, 10);
+  const nodeTestFiles: string[] = [];
+  for (const p of files) {
+    const head = await readRepoFile(ctx, p, 4 * 1024);
+    if (!head) continue;
+    const hint = RUN_HINT.exec(head)?.[1]?.trim();
+    if (hint) out.push(ev("test_configuration", p, `Run command documented in ${basename(p)}: ${hint}`, { value: { command: hint }, excerpt: hint }));
+    if (NODE_TEST_IMPORT.test(head)) nodeTestFiles.push(p);
+  }
+  if (nodeTestFiles.length > 0) {
+    const first = nodeTestFiles[0] as string;
+    out.push(
+      ev("test_configuration", first, `Tests use Node's built-in test runner (node:test); run them with \`node --test\` (${nodeTestFiles.length} file(s), e.g. ${first})`, {
+        value: { tool: "node:test", command: `node --test ${nodeTestFiles.join(" ")}`, files: nodeTestFiles },
+      }),
+    );
+  }
+  return out;
 }

@@ -1,5 +1,6 @@
 import type { EvalFinding, EvalResult, GeneratedSkill } from "../contracts/index.js";
 import { SECTION, bulletItems, hasSection, normalizeRefPath, parseEvidenceRefs, sectionLines } from "../skill-compiler/index.js";
+import { unknownScriptFindings } from "./commands.js";
 import type { EvalContext } from "./context.js";
 import { SKILL_FILE, error, parsedSkill, runCheck, warning } from "./context.js";
 
@@ -19,6 +20,7 @@ function groundingFindings(skill: GeneratedSkill, ctx: EvalContext): EvalFinding
   const parsed = parsedSkill(skill);
   if (parsed === undefined) return [error("skill_md_missing", "SKILL.md is missing; grounding cannot be verified.", SKILL_FILE)];
   const body = parsed.body;
+  f.push(...unknownScriptFindings(body, ctx.packageScripts));
 
   if (!hasSection(body, SECTION.projectConstraints)) {
     f.push(warning("no_project_constraints", "The skill has no grounded project constraints; it may be generic rather than project-specific.", SKILL_FILE));
