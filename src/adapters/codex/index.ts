@@ -1,6 +1,8 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { ActivationCapability } from "../../contracts/index.js";
-import { BaseHarnessAdapter } from "../../adapter-sdk/index.js";
+import type { ActivationCapability, SkillFile } from "../../contracts/index.js";
+import { BaseHarnessAdapter, NATIVE_PLUGIN_NAME, pluginSourceDir } from "../../adapter-sdk/index.js";
+import { isValidSkillDirName } from "../../storage/index.js";
 
 /**
  * OpenAI Codex adapter (§9.3). Skills live in `.agents/skills/` (project) and `~/.agents/skills/`
@@ -23,6 +25,18 @@ export class CodexAdapter extends BaseHarnessAdapter {
 
   protected personalSkillsRel(): string {
     return path.join(".agents", "skills");
+  }
+
+  /**
+   * Codex UI metadata (`agents/openai.yaml`: interface + policy) for skills shipped in the packaged
+   * Codex plugin, i.e. the bootstrap. Read from `plugins/codex` so the plugin and the plain-skill
+   * install share one source. Generated skills get no extras (§10.5: identical across harnesses).
+   */
+  override async harnessExtraFiles(skillName: string): Promise<SkillFile[]> {
+    if (!isValidSkillDirName(skillName)) return [];
+    const file = path.join(pluginSourceDir("codex"), NATIVE_PLUGIN_NAME, "skills", skillName, "agents", "openai.yaml");
+    const content = await readFile(file, "utf8").catch(() => undefined);
+    return content === undefined ? [] : [{ path: "agents/openai.yaml", content }];
   }
 
   invocationHint(name: string): string {

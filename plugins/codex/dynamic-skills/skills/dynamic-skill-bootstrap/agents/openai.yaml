@@ -1,0 +1,6 @@
+interface:
+  display_name: "Dynamic Skills"
+  short_description: "Generate a checked, repository-specific skill when existing skills don't cover a task"
+  default_prompt: "Use $dynamic-skill-bootstrap to generate a repository-specific skill for this task: "
+policy:
+  allow_implicit_invocation: true

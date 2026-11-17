@@ -163,7 +163,7 @@ export class ClarificationManager {
     const request: ClarificationRequest = {
       runId,
       round,
-      maximumRounds: MAXIMUM_CLARIFICATION_ROUNDS,
+      maximumRounds: this.state.maximumRounds,
       // Required questions first so the user sees blocking decisions before optional ones.
       questions: [...questions.filter((q) => q.required), ...questions.filter((q) => !q.required)],
       context,

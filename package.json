@@ -18,7 +18,8 @@
   "files": [
     "dist",
     "skills",
-    "schemas"
+    "schemas",
+    "plugins"
   ],
   "engines": {
     "node": ">=26"
@@ -27,7 +28,9 @@
     "build": "node node_modules/typescript7/bin/tsc -p tsconfig.build.json",
     "typecheck": "node node_modules/typescript7/bin/tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test:harness": "DS_HARNESS_E2E=claude vitest run test/harness",
+    "bench": "pnpm build && node dist/cli/index.js benchmark"
   },
   "dependencies": {
     "ajv": "^8.20.0",

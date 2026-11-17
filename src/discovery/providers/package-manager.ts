@@ -51,6 +51,15 @@ export class PackageManagerProvider implements DiscoveryProvider {
         out.push(ev("package_manager", p, `${manager} (${file} present)`, { value: { name: manager }, confidence }));
       }
     }
+    // A package.json with no lockfile and no packageManager field: npm is Node's default. Lower confidence,
+    // and the claim says it is a default, so analysis can treat it as inferred rather than observed.
+    const jsManaged = out.some((e) => ["pnpm", "npm", "yarn", "bun"].includes(String((e.value as { name?: string } | undefined)?.name)));
+    if (!jsManaged) {
+      const rootPkg = filesNamed(ctx, "package.json").filter((f) => depth(f) <= 1).sort((a, b) => depth(a) - depth(b))[0];
+      if (rootPkg) {
+        out.push(ev("package_manager", rootPkg, "npm (default: package.json without a lockfile or packageManager field)", { value: { name: "npm" }, confidence: 0.6 }));
+      }
+    }
     const pyprojects = await loadPyprojects(ctx);
     for (const { path, data } of pyprojects) {
       const tool = isRecord(data.tool) ? data.tool : {};

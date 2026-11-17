@@ -13,7 +13,7 @@ import {
   type PersistenceChoice,
   type TaskIntent,
 } from "../contracts/index.js";
-import { DynamicSkillsError, GENERATOR_VERSION, dsError, errorMessage, estimateTokens, hashSkillFiles, PRODUCT_NAME } from "../core/index.js";
+import { DynamicSkillsError, GENERATOR_VERSION, dsError, errorMessage, estimateTokens, hashSkillFiles, PRODUCT_NAME, writeJson } from "../core/index.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { loadConfig } from "../orchestrator/config.js";
 import { RunStore } from "../orchestrator/run-store.js";
@@ -21,10 +21,11 @@ import { RepositoryScanner, getRepositoryIdentity } from "../discovery/index.js"
 import { buildContextPacket } from "../context-packet/index.js";
 import { ArtifactStore, ensureRuntimeRoot, runtimeRoot } from "../storage/index.js";
 import { createAdapter } from "../adapters/index.js";
-import { detectHarnesses, installBootstrap } from "../adapter-sdk/index.js";
+import { detectHarnesses, installBootstrap, installNativeIntegration } from "../adapter-sdk/index.js";
 import { schemaPath } from "../context-analyzer-contracts/index.js";
 import { parseSkillMarkdown } from "../skill-compiler/index.js";
 import { checkConciseness, checkPortability, checkSecurity, checkStructural, type EvalContext } from "../eval-engine/index.js";
+import { DEFAULT_SCENARIOS_PATH, formatBenchmarkTable, runBenchmarks } from "../benchmark/index.js";
 
 /** Package root (works from src/cli and dist/cli). */
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -94,7 +95,8 @@ export function buildProgram(): Command {
     .option("--harness <list>", "comma-separated harnesses (claude,codex,opencode); default: detected")
     .option("--global", "install into personal (user-level) skill directories")
     .option("--force", "replace a conflicting bootstrap skill")
-    .action(async (opts: { harness?: string; global?: boolean; force?: boolean }, cmd: Command) => {
+    .option("--native", "install native plugin integration: Claude Code/Codex plugin marketplaces (you run the printed commands) and the OpenCode live-registry plugin")
+    .action(async (opts: { harness?: string; global?: boolean; force?: boolean; native?: boolean }, cmd: Command) => {
       const g = globals(cmd);
       const root = rootOf(g);
       try {
@@ -110,22 +112,51 @@ export function buildProgram(): Command {
         await ensureRuntimeRoot(root);
         const scope = opts.global ? "personal" : "project";
         const results = [];
+        const nativeResults = [];
         for (const id of harnesses) {
           const adapter = createAdapter(id, { projectRoot: root, ...(g.home ? { homeDir: g.home } : {}) });
           await adapter.initialize();
-          const res = await installBootstrap({ adapter, scope, sourceDir: BOOTSTRAP_SOURCE_DIR, ...(opts.force ? { force: true } : {}) });
-          const discoverable = (await adapter.getExistingSkills()).some((s) => s.name === "dynamic-skill-bootstrap");
-          results.push({ harness: id, scope, ...res, discoverable });
+          // With --native, Claude Code and Codex get the bootstrap from the plugin; installing the plain
+          // skill too would list it twice (the plugin copy is namespaced, e.g. /dynamic-skills:…).
+          const viaPlugin = opts.native && (id === "claude" || id === "codex");
+          if (!viaPlugin) {
+            const res = await installBootstrap({
+              adapter,
+              scope,
+              sourceDir: BOOTSTRAP_SOURCE_DIR,
+              ...(opts.force ? { force: true } : {}),
+              ...(id === "codex" ? { harnessExtras: true } : {}),
+            });
+            const discoverable = (await adapter.getExistingSkills()).some((s) => s.name === "dynamic-skill-bootstrap");
+            results.push({ harness: id, scope, ...res, discoverable });
+          }
+          if (opts.native) {
+            nativeResults.push(
+              await installNativeIntegration({ harness: id, scope, projectRoot: root, ...(g.home ? { homeDir: g.home } : {}), ...(opts.force ? { force: true } : {}) }),
+            );
+          }
         }
-        if (g.json) print({ status: "ok", results });
+        const conflicts = results.some((r) => r.status === "conflict") || nativeResults.some((n) => n.actions.some((a) => a.status === "conflict"));
+        if (g.json) print({ status: conflicts ? "conflict" : "ok", results, native: nativeResults });
         else {
           for (const r of results) {
             const mark = r.status === "conflict" ? "✗" : r.discoverable ? "✓" : "!";
             process.stdout.write(`${mark} ${r.harness}: bootstrap ${r.status} at ${r.path}${r.discoverable ? "" : " (not yet discoverable)"}\n`);
           }
-          if (results.some((r) => r.status === "conflict")) process.stdout.write("Re-run with --force to replace conflicting copies.\n");
+          for (const n of nativeResults) {
+            const files = n.actions.filter((a) => a.kind === "file");
+            const bad = files.filter((a) => a.status === "conflict");
+            process.stdout.write(`${bad.length ? "✗" : "✓"} ${n.harness}: native integration — ${files.length} file(s) ${bad.length ? `, ${bad.length} conflict(s)` : "ready"}\n`);
+            for (const a of bad) process.stdout.write(`    conflict: ${a.path} (${a.detail})\n`);
+            const steps = n.actions.filter((a) => a.kind === "instruction");
+            if (steps.length) {
+              process.stdout.write(`  To finish installing for ${n.harness}, run:\n`);
+              for (const s of steps) process.stdout.write(`    ${s.detail}\n`);
+            }
+          }
+          if (conflicts) process.stdout.write("Re-run with --force to replace conflicting copies.\n");
         }
-        if (results.some((r) => r.status === "conflict")) process.exitCode = 1;
+        if (conflicts) process.exitCode = 1;
       } catch (err) {
         fail(err, !!g.json);
       }
@@ -301,6 +332,38 @@ export function buildProgram(): Command {
       }
     });
 
+  // ---------------------------------------------------------------- benchmark
+  program
+    .command("benchmark")
+    .description("Run the §18.7 performance benchmarks (repository checkout only: needs benchmarks/ and fixtures/)")
+    .option("--host-latency-ms <ms>", "simulated host LLM time per analyze/compile step (counts against the SLA)", "0")
+    .option("--scenario <id>", "run only this scenario (repeatable)", collect)
+    .option("--harness <id>", "harness adapter to activate through", "claude")
+    .option("--out <file>", "also write the JSON report to this file")
+    .action(async (opts: { hostLatencyMs: string; scenario?: string[]; harness: string; out?: string }, cmd: Command) => {
+      const g = globals(cmd);
+      try {
+        const hostLatencyMs = Number(opts.hostLatencyMs);
+        if (!Number.isFinite(hostLatencyMs) || hostLatencyMs < 0) {
+          throw dsError("configuration", "cli", "--host-latency-ms must be a non-negative number", { recoverable: true });
+        }
+        if (!existsSync(DEFAULT_SCENARIOS_PATH)) {
+          throw dsError("configuration", "cli", "Benchmarks run from a repository checkout; benchmarks/scenarios.json was not found", { recoverable: true });
+        }
+        const report = await runBenchmarks({
+          hostLatencyMs,
+          harness: parseHarness(opts.harness),
+          ...(opts.scenario ? { scenarioIds: opts.scenario } : {}),
+        });
+        if (opts.out) await writeJson(path.resolve(opts.out), report);
+        if (g.json) print(report);
+        else process.stdout.write(`${formatBenchmarkTable(report)}\n`);
+        if (report.summary.slaViolations.length > 0) process.exitCode = 1;
+      } catch (err) {
+        fail(err, !!g.json);
+      }
+    });
+
   // ---------------------------------------------------------------- list
   program
     .command("list")
@@ -453,13 +516,21 @@ export function buildProgram(): Command {
     .command("persist <runId>")
     .description("Apply the user's persistence choice (requires explicit approval)")
     .requiredOption("--choice <choice>", "project | personal | ephemeral | discard")
-    .action(async (runId: string, opts: { choice: string }, cmd: Command) => {
+    .option("--harnesses <list>", "also install into these harnesses (comma-separated); identical copies (§10.5)")
+    .option("--all-harnesses", "install into every detected harness")
+    .action(async (runId: string, opts: { choice: string; harnesses?: string; allHarnesses?: boolean }, cmd: Command) => {
       await withRun(cmd, runId, async (o) => {
         const choices: PersistenceChoice[] = ["project", "personal", "ephemeral", "discard"];
         if (!(choices as string[]).includes(opts.choice)) {
           throw dsError("configuration", "cli", `--choice must be one of ${choices.join(", ")}`, { recoverable: true });
         }
-        return o.persist(runId, opts.choice as PersistenceChoice);
+        const g = globals(cmd);
+        let harnesses: HarnessId[] = opts.harnesses ? opts.harnesses.split(",").map((h) => parseHarness(h.trim())) : [];
+        if (opts.allHarnesses) {
+          const detected = await detectHarnesses({ projectRoot: rootOf(g), ...(g.home ? { homeDir: g.home } : {}) });
+          harnesses = [...new Set([...harnesses, ...detected.map((d) => d.id)])];
+        }
+        return o.persist(runId, opts.choice as PersistenceChoice, harnesses.length ? { harnesses } : {});
       });
     });
 

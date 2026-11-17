@@ -1,0 +1,128 @@
+{
+  "$comment": "TechDesign §18.7 benchmark scenarios. Each `expected` block lists facts that are true for the fixture repository (checked against its files), independent of what discovery currently finds. Names are compared case- and punctuation-insensitively.",
+  "scenarios": [
+    {
+      "id": "node-ts-refund-route",
+      "fixture": "node-ts-monorepo",
+      "task": "Add a POST /payments/refund route to packages/api that validates the request body with zod and has vitest tests",
+      "expected": {
+        "languages": ["TypeScript"],
+        "frameworks": ["Express", "Zod", "Vitest", "React"],
+        "packageManagers": ["pnpm"],
+        "instructions": ["CLAUDE.md"]
+      }
+    },
+    {
+      "id": "node-ts-web-payments-page",
+      "fixture": "node-ts-monorepo",
+      "task": "Add a React payments history page to packages/web that fetches from the api package",
+      "expected": {
+        "languages": ["TypeScript"],
+        "frameworks": ["React", "React DOM", "Express"],
+        "packageManagers": ["pnpm"],
+        "instructions": ["CLAUDE.md"]
+      }
+    },
+    {
+      "id": "python-order-cancel",
+      "fixture": "python-project",
+      "task": "Add an endpoint to cancel an order in the FastAPI orders router with SQLAlchemy persistence and pytest coverage",
+      "expected": {
+        "languages": ["Python"],
+        "frameworks": ["FastAPI", "Pydantic", "SQLAlchemy", "pytest", "Uvicorn"],
+        "packageManagers": ["uv"]
+      }
+    },
+    {
+      "id": "python-order-pagination",
+      "fixture": "python-project",
+      "task": "Add cursor-based pagination to the list orders endpoint using Pydantic response models",
+      "expected": {
+        "languages": ["Python"],
+        "frameworks": ["FastAPI", "Pydantic"],
+        "packageManagers": ["uv"]
+      }
+    },
+    {
+      "id": "java-order-reservation",
+      "fixture": "java-microservices",
+      "task": "Make the order-service reserve stock by calling the inventory-service REST API before creating an order",
+      "expected": {
+        "languages": ["Java"],
+        "frameworks": ["Spring Boot", "Spring Web MVC"],
+        "packageManagers": ["Maven"]
+      }
+    },
+    {
+      "id": "java-inventory-validation",
+      "fixture": "java-microservices",
+      "task": "Add request validation and a 400 error response to the inventory-service controller with a Spring Boot test",
+      "expected": {
+        "languages": ["Java"],
+        "frameworks": ["Spring Boot", "Spring Boot Test"],
+        "packageManagers": ["Maven"]
+      }
+    },
+    {
+      "id": "go-readiness-handler",
+      "fixture": "go-service",
+      "task": "Add a /readyz readiness handler to the chi router in internal/handler with a testify test",
+      "expected": {
+        "languages": ["Go"],
+        "frameworks": ["chi", "Testify"],
+        "packageManagers": ["Go modules"]
+      }
+    },
+    {
+      "id": "mixed-api-endpoint",
+      "fixture": "mixed-language",
+      "task": "Add a Flask endpoint to services/api that returns platform health and call it from the React frontend",
+      "expected": {
+        "languages": ["TypeScript", "Python", "Go"],
+        "frameworks": ["Flask", "SQLAlchemy", "React", "pytest"],
+        "packageManagers": ["npm", "Poetry", "Go modules"]
+      }
+    },
+    {
+      "id": "mixed-cli-command",
+      "fixture": "mixed-language",
+      "task": "Add a cobra subcommand to the Go CLI in tools/cli that queries the Python API",
+      "expected": {
+        "languages": ["Go", "Python"],
+        "frameworks": ["Cobra", "Flask"],
+        "packageManagers": ["Go modules", "Poetry"]
+      }
+    },
+    {
+      "id": "conflicting-runtime-route",
+      "fixture": "conflicting-runtime",
+      "task": "Add a Fastify health check route to the legacy service and a node --test test for it",
+      "expected": {
+        "languages": ["JavaScript"],
+        "frameworks": ["Fastify"],
+        "packageManagers": ["npm"]
+      }
+    },
+    {
+      "id": "minimal-docs-cli-args",
+      "fixture": "minimal-docs",
+      "task": "Add command-line argument parsing to main.py so greet takes the name from argv",
+      "expected": {
+        "languages": ["Python"],
+        "frameworks": [],
+        "packageManagers": []
+      }
+    },
+    {
+      "id": "extensive-instructions-export",
+      "fixture": "extensive-instructions",
+      "task": "Add a slugify utility to the library's public API with jest unit tests",
+      "expected": {
+        "languages": ["TypeScript"],
+        "frameworks": ["Jest"],
+        "packageManagers": ["npm"],
+        "instructions": ["CLAUDE.md", "AGENTS.md", ".cursorrules", ".github/copilot-instructions.md"]
+      }
+    }
+  ]
+}

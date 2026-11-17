@@ -1,0 +1,14 @@
+{
+  "name": "dynamic-skills-local",
+  "owner": {
+    "name": "Dynamic Skills"
+  },
+  "plugins": [
+    {
+      "name": "dynamic-skills",
+      "source": "./dynamic-skills",
+      "description": "Generate checked, repository-specific Agent Skills just in time when existing skills don't cover a task."
+    }
+  ],
+  "description": "Local marketplace for the Dynamic Skills plugin: just-in-time, evaluated Agent Skills for coding agents."
+}

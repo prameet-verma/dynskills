@@ -2,7 +2,9 @@ import path from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import {
   STAGE_BUDGET_MS,
+  type ActivationResult,
   type Assumption,
+  type BehaviouralEvalCase,
   type BehaviouralEvalResult,
   type CanonicalBundleRecord,
   type ContextAnalysisResult,
@@ -27,6 +29,7 @@ import {
   isoNow,
   newId,
   readJson,
+  readJsonIfExists,
   stopwatch,
   withTimeout,
   writeFileAtomic,
@@ -52,9 +55,9 @@ import {
   compileDeterministicDraft,
   renderSkill,
 } from "../skill-compiler/index.js";
-import { createBehaviouralEvalCase, evaluateSkill, planRevision, type EvalContext } from "../eval-engine/index.js";
+import { compareWithBaseline, createBehaviouralEvalCase, evaluateSkill, planRevision, type EvalContext } from "../eval-engine/index.js";
 import { ArtifactStore } from "../storage/index.js";
-import { assessFreshness, computeContextFingerprint, findReusableBundles } from "../lifecycle/index.js";
+import { assessFreshness, computeContextFingerprint, findReusableBundles, nextSkillVersion } from "../lifecycle/index.js";
 import { createAdapter } from "../adapters/index.js";
 import type { AdapterOptions, BaseHarnessAdapter } from "../adapter-sdk/index.js";
 import { loadConfig } from "./config.js";
@@ -155,6 +158,17 @@ export class Orchestrator {
     return this.adapterInstance;
   }
 
+  /** An adapter for another harness, sharing this run's project, home and session. */
+  private adapterFor(id: HarnessId, sessionId: string): BaseHarnessAdapter {
+    if (id === this.harness) return this.adapter(sessionId);
+    return createAdapter(id, {
+      projectRoot: this.root,
+      sessionId,
+      ...(this.opts.homeDir ? { homeDir: this.opts.homeDir } : {}),
+      ...(this.opts.env ? { env: this.opts.env } : {}),
+    });
+  }
+
   private budgetFrom(record: RunRecord): ExecutionBudget {
     return ExecutionBudget.fromSnapshot(record.budget, {
       ...(this.opts.now ? { now: this.opts.now } : {}),
@@ -172,7 +186,7 @@ export class Orchestrator {
         consumedMs: Math.round(budget.consumedMs()),
         remainingMs: Math.round(budget.remainingMs()),
         paused: budget.isPaused(),
-        clarificationRoundsUsed: record.budget.roundsUsed,
+        clarificationRoundsUsed: budget.roundsUsed,
       },
       ...extra,
     };
@@ -245,7 +259,7 @@ export class Orchestrator {
       record.existingSkills = dedupeSkills([...hostSkills, ...repoSkills]).filter((s) => s.name !== "dynamic-skill-bootstrap");
 
       if (!record.forceGenerate) {
-        const reuse = await this.tryReuse(record, adapter);
+        const reuse = await this.tryReuse(record);
         if (reuse) return reuse(budget);
       }
 
@@ -281,12 +295,24 @@ export class Orchestrator {
       record.metrics.discoveryMs = elapsed();
       record.metrics.packetTokens = packet.estimatedTokens;
       record.metrics.packetFiles = packet.discoveryLimits.filesRead;
+      // §17: remember what every packet file looked like, so changes before activation are detected.
+      record.discoveryFingerprint = (
+        await computeContextFingerprint({ root: this.root, repositoryId: repo.repositoryId, dependsOn: packetFilePaths(packet) })
+      ).components;
 
       await writeJson(this.runs.fileFor(record, "packet"), packet);
       await writeJson(this.runs.fileFor(record, "registry"), registry.toJSON());
 
       transition(record, "CONTEXT_ANALYSIS");
       return this.awaitingAnalysis(record, budget, packet, {
+        ...(record.revisionOf
+          ? {
+              revision: {
+                ...record.revisionOf,
+                note: `This run revises the saved skill "${record.revisionOf.name}" (v${record.revisionOf.previousVersion} → v${record.revisionOf.nextVersion}) because its context changed.`,
+              },
+            }
+          : {}),
         discovery: {
           providers: report.providers.map((p) => ({ id: p.providerId, status: p.status, evidence: p.evidenceCount })),
           evidence: packet.evidence.length,
@@ -341,6 +367,11 @@ export class Orchestrator {
           budget.createAbortSignal(),
         );
         if (fulfilled.length > 0) {
+          const added = packetFilePaths(updated).filter((p) => !(`file:${p}` in (record.discoveryFingerprint ?? {})));
+          if (added.length > 0) {
+            const fp = await computeContextFingerprint({ root: this.root, repositoryId: record.identity.repositoryId, dependsOn: added });
+            record.discoveryFingerprint = { ...(record.discoveryFingerprint ?? {}), ...fp.components };
+          }
           for (const p of packetPaths(updated)) registry.registerPath(p);
           registry.add(updated.evidence);
           await writeJson(this.runs.fileFor(record, "registry"), registry.toJSON());
@@ -418,10 +449,17 @@ export class Orchestrator {
         draft = outcome.value;
       }
 
-      const existingNames = record.existingSkills.map((s) => s.name);
+      const revisionNotes: string[] = [];
+      if (record.revisionOf && draft.name !== record.revisionOf.name) {
+        revisionNotes.push(`Renamed "${draft.name}" to "${record.revisionOf.name}" so it revises the saved skill.`);
+        draft = { ...draft, name: record.revisionOf.name };
+      }
+      const existingNames = this.competingSkills(record).map((s) => s.name);
       // §8.6: deterministic fixes are applied before evaluation, so a failure afterwards needs the host LLM.
       const fixed = applyDeterministicFixes(draft, { existingNames });
+      fixed.fixes.push(...revisionNotes);
       await writeJson(this.runs.fileFor(record, "draft"), fixed.draft);
+      record.skillVersion = record.revisionOf?.nextVersion ?? "1.0.0";
 
       transition(record, "GENERATION_EVAL");
       const analysis = await readJson<ContextAnalysisResult>(this.runs.fileFor(record, "analysis"));
@@ -432,6 +470,7 @@ export class Orchestrator {
         contextFingerprint: fingerprint.overall,
         evidenceIds: registry.all().map((e) => e.id),
         assumptions: record.assumptions,
+        skillVersion: record.skillVersion,
       });
       record.metrics.compilationMs = (record.metrics.compilationMs ?? 0) + elapsed();
 
@@ -441,12 +480,13 @@ export class Orchestrator {
         knownEvidenceIds: new Set(registry.all().map((e) => e.id)),
         knownPaths: registry.sources(),
         assumptionIds: new Set(record.assumptions.map((a) => a.id)),
-        existingSkills: record.existingSkills,
+        existingSkills: this.competingSkills(record),
         repositoryInstructions: packet.instructions.map((i) => i.content ?? "").filter(Boolean),
         policy: request.compilationPolicy,
         evidenceClaims: registry.all().map((e) => `${e.claim} ${typeof e.value === "object" ? JSON.stringify(e.value) : String(e.value ?? "")}`),
       };
       const evalCase = createBehaviouralEvalCase({ task: record.task, analysis, draft: fixed.draft });
+      await writeJson(this.runs.fileFor(record, "evalCase"), evalCase);
       const evalTimer = stopwatch();
       const report = await withTimeout(
         () =>
@@ -479,14 +519,29 @@ export class Orchestrator {
         return this.fail(record, budget, "activation", "activation", "Staged artifact hash does not match the evaluated version", { stagedDir });
       }
       record.skill = { name: skill.name, skillId: skill.skillId, artifactHash: skill.artifactHash, stagedDir, tokenCount: skill.tokenCount };
+      if (record.config.evaluation.baselineComparison === "always") {
+        record.baseline = compareWithBaseline({ skill, evalCase, baselineTexts: evalContext.repositoryInstructions, trigger: "always" });
+      }
 
       transition(record, "ACTIVATION");
+      // §17: if files the skill relies on changed since discovery, its evidence is stale — don't activate.
+      const changes = await this.repositoryChanges(record, fingerprintInputs.dependsOn);
+      record.uncitedChanges = changes.uncited;
+      if (changes.cited.length > 0) {
+        return this.fail(record, budget, "repository_changed", "orchestrator", `Files the skill relies on changed during generation: ${changes.cited.join(", ")}`, {
+          changedFiles: changes.cited,
+          stagedDir,
+          fallbackAction: "Start a new run so discovery sees the current files, or continue the task with existing capabilities.",
+        });
+      }
       const activationTimer = stopwatch();
-      const activation = await withTimeout(
-        () => this.adapter(record.identity.sessionId).loadSkillForSession(skill),
-        Math.max(1, Math.min(STAGE_BUDGET_MS.activation, budget.remainingMs())),
-        budget.createAbortSignal(),
-      );
+      const activation = record.revisionOf
+        ? await this.activateRevisionByInjection(record, skill, stagedDir)
+        : await withTimeout(
+            () => this.adapter(record.identity.sessionId).loadSkillForSession(skill),
+            Math.max(1, Math.min(STAGE_BUDGET_MS.activation, budget.remainingMs())),
+            budget.createAbortSignal(),
+          );
       record.metrics.activationMs = activationTimer();
       if (!activation.success || activation.artifactHash !== report.artifactHash) {
         return this.fail(record, budget, "activation", "activation", activation.message ?? "Harness could not activate the skill", {
@@ -505,7 +560,8 @@ export class Orchestrator {
         "active",
         [
           "Apply the skill instructions below to the original task now and resume it.",
-          activation.requiresReload && activation.invocationHint ? `The harness needs a reload to list the skill: ${activation.invocationHint}` : activation.invocationHint ?? "",
+          activation.requiresReload ? `The harness needs a reload before it lists the skill: ${reloadInstruction(activation)}` : "",
+          activation.invocationHint ?? "",
           `After the task, ask the user whether to keep the skill (project / global / temporary / discard) and run \`dynamic-skills run persist ${runId} --choice <project|personal|ephemeral|discard>\`.`,
         ]
           .filter(Boolean)
@@ -514,18 +570,28 @@ export class Orchestrator {
           skill: { name: skill.name, skillId: skill.skillId, installedPath: activation.installedPath, tokenCount: skill.tokenCount },
           instructions,
           requiresReload: activation.requiresReload ?? false,
+          ...(activation.requiresReload ? { reloadInstruction: reloadInstruction(activation) } : {}),
           invocationHint: activation.invocationHint,
           evaluation: summarizeReport(report),
           deterministicFixes: fixed.fixes,
           assumptions: record.assumptions,
           lifetime: "ephemeral",
+          skillVersion: record.skillVersion,
+          ...(record.revisionOf ? { revision: record.revisionOf } : {}),
+          ...(record.baseline ? { baseline: record.baseline } : {}),
+          ...(changes.uncited.length > 0 ? { repositoryChanges: { uncited: changes.uncited, note: "These files changed during generation but the skill does not rely on them." } } : {}),
         },
       );
     });
   }
 
-  async persist(runId: string, choice: PersistenceChoice): Promise<BridgeResponse> {
-    return this.command(runId, "persist", { choice }, async (record, budget) => {
+  /**
+   * §10.4 persistence (explicit user choice). Project/personal saves write the canonical bundle
+   * (§10.5) and install identical copies into every chosen harness, record a §8.3 baseline
+   * comparison on promotion, and keep version history when a revision replaces a saved skill.
+   */
+  async persist(runId: string, choice: PersistenceChoice, opts: { harnesses?: HarnessId[] } = {}): Promise<BridgeResponse> {
+    return this.command(runId, "persist", { choice, harnesses: opts.harnesses ?? null }, async (record, budget) => {
       if (record.state !== "PERSISTENCE_PENDING" && record.state !== "ACTIVE") this.expectState(record, "PERSISTENCE_PENDING", "persist");
       if (!record.skill) throw dsError("invalid_state", "orchestrator", "Run has no activated skill", { runId, recoverable: false });
       const adapter = this.adapter(record.identity.sessionId);
@@ -538,6 +604,7 @@ export class Orchestrator {
         });
       }
       const draft = await readJson<SkillDraft>(this.runs.fileFor(record, "draft"));
+      const skillVersion = record.skillVersion ?? "1.0.0";
       const skill: GeneratedSkill = {
         skillId: record.skill.skillId,
         name: record.skill.name,
@@ -549,13 +616,15 @@ export class Orchestrator {
           runId,
           repositoryId: record.identity.repositoryId,
           generatorVersion: GENERATOR_VERSION,
-          skillVersion: "1.0.0",
+          skillVersion,
           contextFingerprint: "",
           evidenceIds: [],
           assumptionIds: record.assumptions.map((a) => a.id),
           createdAt: record.createdAt,
         },
       };
+      const harnesses = [...new Set<HarnessId>([this.harness, ...(opts.harnesses ?? [])])];
+      const installs: CanonicalBundleRecord["installs"] = [];
       let savedPath: string | undefined;
       try {
         if (choice === "project" || choice === "personal") {
@@ -564,31 +633,63 @@ export class Orchestrator {
           const fingerprint = await computeContextFingerprint({ root: this.root, repositoryId: record.identity.repositoryId, ...fpInputs });
           skill.provenance.contextFingerprint = fingerprint.overall;
           const evaluation = await readJson<CanonicalBundleRecord["evaluation"]>(this.runs.fileFor(record, "evaluation"));
+          const evalCase = await readJsonIfExists<BehaviouralEvalCase>(this.runs.fileFor(record, "evalCase"));
+          if (evalCase && record.config.evaluation.baselineComparison !== "never") {
+            record.baseline = compareWithBaseline({
+              skill,
+              evalCase,
+              baselineTexts: packet.instructions.map((i) => i.content ?? "").filter(Boolean),
+              trigger: record.revisionOf ? "revision" : "promotion",
+            });
+          }
+          const existing = await this.artifacts.loadBundle(skill.name, choice).catch(() => undefined);
           const now = isoNow();
+          const history = existing && existing.record.artifactHash !== skill.artifactHash
+            ? [
+                {
+                  skillVersion: existing.record.skillVersion,
+                  artifactHash: existing.record.artifactHash,
+                  replacedAt: now,
+                  reason: record.revisionOf ? `${record.revisionOf.decision}: ${record.revisionOf.reasons.join("; ") || "context changed"}` : "replaced by a new generation",
+                },
+                ...(existing.record.history ?? []),
+              ]
+            : existing?.record.history;
+
+          // Activation and persistence are separate (ADR-005): drop the session install, then save.
+          if (!record.revisionOf) await adapter.removeSkill(skill.skillId, "ephemeral").catch(() => undefined);
+          for (const id of harnesses) {
+            const target = id === this.harness ? adapter : this.adapterFor(id, record.identity.sessionId);
+            await target.saveSkill(skill, choice);
+            installs.push({ harness: id, scope: choice, path: path.join(target.skillsDirFor(choice), skill.name), artifactHash: skill.artifactHash, installedAt: now });
+          }
+          // §10.5: every installed copy must be byte-identical to the canonical artifact.
+          for (const inst of installs) {
+            if (hashSkillFiles(await this.artifacts.readSkillDir(inst.path)) !== skill.artifactHash) {
+              throw dsError("persistence", "storage", `Installed copy for ${inst.harness} differs from the canonical artifact`, { runId, recoverable: true });
+            }
+          }
           const bundle: CanonicalBundleRecord = {
             skillId: skill.skillId,
             name: skill.name,
             artifactHash: skill.artifactHash,
-            skillVersion: "1.0.0",
+            skillVersion,
             generatorVersion: GENERATOR_VERSION,
             repositoryId: choice === "personal" ? "*" : record.identity.repositoryId,
             contextFingerprint: fingerprint,
             evaluation,
-            createdAt: now,
+            createdAt: existing?.record.createdAt ?? now,
             updatedAt: now,
             lifecycleStatus: "persisted",
-            installs: [],
+            installs,
             dependsOn: fpInputs.dependsOn,
             task: record.task.description,
+            ...(record.baseline ? { baseline: record.baseline } : {}),
+            ...(history?.length ? { history } : {}),
           };
-          // Replace the ephemeral session install with a persistent one (activation ≠ persistence, ADR-005).
-          await adapter.removeSkill(skill.skillId, "ephemeral").catch(() => undefined);
-          await adapter.saveSkill(skill, choice);
-          const installPath = path.join(adapter.skillsDirFor(choice), skill.name);
-          bundle.installs.push({ harness: this.harness, scope: choice, path: installPath, artifactHash: skill.artifactHash, installedAt: now });
-          savedPath = await this.artifacts.saveCanonical(skill, bundle, choice);
+          savedPath = await this.artifacts.saveCanonical(skill, bundle, choice, { overwrite: !!existing });
         } else if (choice === "discard") {
-          await adapter.removeSkill(skill.skillId, "ephemeral").catch(() => undefined);
+          if (!record.revisionOf) await adapter.removeSkill(skill.skillId, "ephemeral").catch(() => undefined);
           await rm(record.skill.stagedDir, { recursive: true, force: true });
         }
       } catch (err) {
@@ -597,17 +698,31 @@ export class Orchestrator {
         transition(record, "COMPLETED", `persistence failed: ${errorMessage(err)}`);
         return this.respond(record, budget, "completed", "Persistence failed; the skill stays ephemeral for this session.", {
           persistenceError: err instanceof DynamicSkillsError ? err.info : { message: errorMessage(err) },
+          ...(installs.length ? { partialInstalls: installs } : {}),
         });
       }
       record.persistence = { choice, ...(savedPath ? { path: savedPath } : {}) };
       transition(record, "COMPLETED", `persistence: ${choice}`);
+      const where = installs.map((i) => i.harness).join(", ");
+      const revised = record.revisionOf ? ` as v${skillVersion} (replacing v${record.revisionOf.previousVersion})` : ` as v${skillVersion}`;
       const messages: Record<PersistenceChoice, string> = {
-        project: "Saved in this project. It will be reused for similar tasks after a freshness check.",
-        personal: "Saved globally for this user.",
-        ephemeral: "Kept temporarily; `dynamic-skills clean` removes it after the retention period.",
-        discard: "Discarded and removed from the session.",
+        project: `Saved in this project${revised} for ${where}. It will be reused for similar tasks after a freshness check.`,
+        personal: `Saved globally for this user${revised} for ${where}.`,
+        ephemeral: record.revisionOf
+          ? "Kept for this session only; the saved version is unchanged."
+          : "Kept temporarily; `dynamic-skills clean` removes it after the retention period.",
+        discard: record.revisionOf ? "Discarded the revision; the saved version is unchanged." : "Discarded and removed from the session.",
       };
-      return this.respond(record, budget, "completed", messages[choice], { persistence: record.persistence });
+      const baselineNote =
+        record.baseline && record.baseline.verdict !== "improves"
+          ? ` Baseline check: the skill adds no measurable coverage over the repository's own instructions (lift ${record.baseline.lift}); consider discarding it.`
+          : "";
+      return this.respond(record, budget, "completed", messages[choice] + baselineNote, {
+        persistence: record.persistence,
+        skillVersion,
+        ...(installs.length ? { installs } : {}),
+        ...(record.baseline ? { baseline: record.baseline } : {}),
+      });
     });
   }
 
@@ -713,14 +828,15 @@ export class Orchestrator {
       analysis,
       gaps: gaps.gaps,
       assumptions: record.assumptions,
-      existingSkills: record.existingSkills,
+      existingSkills: this.competingSkills(record),
       config: record.config,
     });
     await writeJson(this.runs.fileFor(record, "compilationRequest"), request);
-    const prompt = buildCompilationPrompt(request, {
+    let prompt = buildCompilationPrompt(request, {
       evidenceIds: packet.evidence.map((e) => e.id),
       skillDraftSchemaPath: schemaPath("skill-draft"),
     });
+    if (record.revisionOf) prompt += await this.revisionPromptSection(record);
     const promptPath = this.runs.fileFor(record, "compilePrompt");
     await writeFileAtomic(promptPath, prompt);
     return this.respond(
@@ -766,8 +882,19 @@ export class Orchestrator {
     );
   }
 
-  private async tryReuse(record: RunRecord, adapter: BaseHarnessAdapter): Promise<((b: ExecutionBudget) => BridgeResponse) | undefined> {
-    const sufficiency = assessSkillSufficiency(record.task, record.existingSkills);
+  /**
+   * Preflight (§13.1, §10.6). Skills that Dynamic Skills manages are judged by freshness, never by
+   * name alone: a fresh one is reused, a stale one is revised by this run (augment → minor version,
+   * regenerate → major version). Other existing skills are reused when they are sufficient.
+   */
+  private async tryReuse(record: RunRecord): Promise<((b: ExecutionBudget) => BridgeResponse) | undefined> {
+    const listed = [
+      ...(await this.artifacts.listBundles("project").catch(() => [])).map((b) => ({ bundle: b, scope: "project" as const })),
+      ...(await this.artifacts.listBundles("personal").catch(() => [])).map((b) => ({ bundle: b, scope: "personal" as const })),
+    ];
+    const managed = new Set(listed.map((x) => x.bundle.name));
+
+    const sufficiency = assessSkillSufficiency(record.task, record.existingSkills.filter((s) => !managed.has(s.name)));
     if (sufficiency.sufficient) {
       const skills = sufficiency.matches.filter((m) => m.score > 0).slice(0, 3).map((m) => m.skill);
       record.reusedSkills = skills;
@@ -777,17 +904,21 @@ export class Orchestrator {
           skills,
         });
     }
-    // Persisted Dynamic Skills bundles: reuse only after freshness validation (§10.6).
-    const bundles = [
-      ...(await this.artifacts.listBundles("project").catch(() => [])),
-      ...(await this.artifacts.listBundles("personal").catch(() => [])),
-    ];
-    const candidates = findReusableBundles({ taskDescription: record.task.description, bundles, repositoryId: record.identity.repositoryId });
+
+    const candidates = findReusableBundles({
+      taskDescription: record.task.description,
+      bundles: listed.map((x) => x.bundle),
+      repositoryId: record.identity.repositoryId,
+    }).filter((b) => assessSkillSufficiency(record.task, [{ name: b.name, description: b.task, path: b.name, scope: "unknown" }]).sufficient);
+
     for (const bundle of candidates.slice(0, 2)) {
+      const scope = listed.find((x) => x.bundle === bundle)?.scope ?? "project";
       const current = await computeContextFingerprint({
         root: this.root,
-        repositoryId: bundle.repositoryId === "*" ? "*" : record.identity.repositoryId,
+        repositoryId: bundle.repositoryId,
         dependsOn: bundle.dependsOn,
+        // Facts are derived from manifest files that dependsOn already covers (see fingerprintInputs),
+        // so carrying the recorded facts forward compares only what preflight can observe: file content.
         facts: Object.fromEntries(
           Object.entries(bundle.contextFingerprint.components)
             .filter(([k]) => k.startsWith("fact:"))
@@ -795,21 +926,92 @@ export class Orchestrator {
         ),
       });
       const freshness = assessFreshness(bundle, current);
-      if (freshness.decision !== "reuse") continue;
-      const scope = bundle.repositoryId === "*" ? "personal" : "project";
-      const loaded = await this.artifacts.loadBundle(bundle.name, scope);
-      if (!loaded) continue;
-      const skillItem: SkillInventoryItem = { name: bundle.name, description: bundle.task, path: bundle.installs[0]?.path ?? "", scope };
-      record.reusedSkills = [skillItem];
-      transition(record, "REUSE_EXISTING", `fresh bundle ${bundle.name}`);
-      void adapter;
-      return (b) =>
-        this.respond(record, b, "reuse_existing", `A previously generated skill "${bundle.name}" is still fresh: load it with your native skill mechanism and continue.`, {
-          skills: [skillItem],
-          freshness,
-        });
+      if (freshness.decision === "reuse") {
+        const skillItem: SkillInventoryItem = { name: bundle.name, description: bundle.task, path: bundle.installs[0]?.path ?? "", scope };
+        record.reusedSkills = [skillItem];
+        transition(record, "REUSE_EXISTING", `fresh bundle ${bundle.name}`);
+        return (b) =>
+          this.respond(record, b, "reuse_existing", `A previously generated skill "${bundle.name}" is still fresh: load it with your native skill mechanism and continue.`, {
+            skills: [skillItem],
+            freshness,
+          });
+      }
+      if (!record.revisionOf) {
+        const decision = freshness.decision;
+        record.revisionOf = {
+          name: bundle.name,
+          scope,
+          previousVersion: bundle.skillVersion,
+          nextVersion: nextSkillVersion(bundle.skillVersion, decision === "augment" ? "minor" : "major"),
+          previousArtifactHash: bundle.artifactHash,
+          decision,
+          reasons: freshness.reasons,
+          changedComponents: freshness.changedComponents,
+        };
+      }
     }
     return undefined;
+  }
+
+  /** Existing skills a new skill must not collide with; the skill being revised is not a competitor. */
+  private competingSkills(record: RunRecord): SkillInventoryItem[] {
+    const revising = record.revisionOf?.name;
+    return revising ? record.existingSkills.filter((s) => s.name !== revising) : record.existingSkills;
+  }
+
+  private async revisionPromptSection(record: RunRecord): Promise<string> {
+    const rev = record.revisionOf;
+    if (!rev) return "";
+    const loaded = await this.artifacts.loadBundle(rev.name, rev.scope).catch(() => undefined);
+    const previous = loaded?.files.find((f) => f.path === "SKILL.md")?.content;
+    const lines = [
+      "",
+      "## Revision of an existing skill",
+      `This run revises the saved skill "${rev.name}" (v${rev.previousVersion} → v${rev.nextVersion}). Use exactly this name.`,
+      `Freshness decision: ${rev.decision}. Why: ${rev.reasons.join("; ") || "context changed"}.`,
+      rev.changedComponents.length ? `Changed since it was saved: ${rev.changedComponents.join(", ")}.` : "",
+      rev.decision === "augment"
+        ? "Keep what is still true and update only what the changes affect; cite current evidence for every constraint."
+        : "Treat the previous version as untrusted history: rebuild every constraint from current evidence.",
+    ];
+    if (previous && rev.decision === "augment") lines.push("", "Previous SKILL.md (for reference, not as evidence):", "```markdown", previous, "```");
+    return `${lines.filter((l) => l !== "").join("\n")}\n`;
+  }
+
+  /**
+   * §17: compare files against their discovery-time hashes. Changes to files the skill relies on
+   * (`cited`) block activation; other changed packet files are only reported.
+   */
+  private async repositoryChanges(record: RunRecord, dependsOn: string[]): Promise<{ cited: string[]; uncited: string[] }> {
+    const baseline = record.discoveryFingerprint ?? {};
+    const files = Object.keys(baseline).map((k) => k.slice("file:".length));
+    if (files.length === 0) return { cited: [], uncited: [] };
+    const current = await computeContextFingerprint({ root: this.root, repositoryId: record.identity.repositoryId, dependsOn: files });
+    const changed = files.filter((f) => current.components[`file:${f}`] !== baseline[`file:${f}`]);
+    const relied = new Set(dependsOn);
+    return { cited: changed.filter((f) => relied.has(f)), uncited: changed.filter((f) => !relied.has(f)) };
+  }
+
+  /**
+   * A revision must not overwrite the saved copy before the user approves (ADR-005), and the
+   * activator refuses to replace a persisted skill. So the revised version reaches the session
+   * through current-turn instruction injection (§9.2 strategy 3); the saved copy changes on persist.
+   */
+  private async activateRevisionByInjection(record: RunRecord, skill: GeneratedSkill, stagedDir: string): Promise<ActivationResult> {
+    const verified = await this.artifacts.verifyHash(stagedDir, skill.artifactHash);
+    const content = skill.files.find((f) => f.path === "SKILL.md")?.content;
+    if (!verified || !content) {
+      return { success: false, capability: "current_turn_instruction_injection", skillId: skill.skillId, artifactHash: skill.artifactHash, message: "Revised artifact failed verification" };
+    }
+    return {
+      success: true,
+      capability: "current_turn_instruction_injection",
+      skillId: skill.skillId,
+      artifactHash: skill.artifactHash,
+      instructions: content,
+      invocationHint: `Apply these instructions directly. The saved "${skill.name}" (v${record.revisionOf?.previousVersion}) stays installed until the user persists v${record.revisionOf?.nextVersion}.`,
+      message: "Revision delivered through current-turn instructions; the saved copy is unchanged until persisted.",
+    };
   }
 
   private fingerprintInputs(packet: ContextPacket, draft: SkillDraft): { dependsOn: string[]; facts: Record<string, string> } {
@@ -823,10 +1025,14 @@ export class Orchestrator {
       }
     }
     for (const c of packet.configuration) cited.add(c.path);
+    // The manifests behind technology facts, so a dependency or runtime change shows up as a file change.
+    for (const e of packet.evidence) {
+      if (["runtime", "framework", "package_manager", "dependency", "tooling"].includes(e.kind) && e.source !== ".") cited.add(e.source);
+    }
     const facts: Record<string, string> = {};
     for (const f of packet.technology.frameworks) facts[`framework:${f.name}`] = f.version ?? "unknown";
     for (const [k, v] of Object.entries(packet.technology.runtimes)) facts[`runtime:${k}`] = v;
-    return { dependsOn: [...cited].sort().slice(0, 50), facts };
+    return { dependsOn: [...cited].filter((p) => !isSkillPath(p)).sort().slice(0, 50), facts };
   }
 
   private awaitingAnalysis(record: RunRecord, budget: ExecutionBudget, packet: ContextPacket, extra: Record<string, unknown>): BridgeResponse {
@@ -892,6 +1098,8 @@ export class Orchestrator {
         return this.degrade(record, budget, "sla_expired", "sla", `Active-processing budget expired (${errorMessage(err)})`);
       }
       if (err instanceof DynamicSkillsError && err.info.category === "invalid_state") throw err;
+      // After activation the run can no longer degrade or fail (§4.1): surface the real error instead.
+      if (record.state === "ACTIVE" || record.state === "PERSISTENCE_PENDING") throw err;
       if (err instanceof DynamicSkillsError && err.info.category === "configuration") throw err;
       const info = err instanceof DynamicSkillsError ? err.info : undefined;
       if (record.state === "ACTIVATION" || record.state === "COMPILATION" || record.state === "GENERATION_EVAL" || record.state === "BEHAVIOURAL_EVAL") {
@@ -932,14 +1140,16 @@ export class Orchestrator {
     extra: Record<string, unknown> = {},
     alreadyTransitioned = false,
   ): BridgeResponse {
+    const { fallbackAction, ...rest } = extra as { fallbackAction?: string };
+    extra = rest;
     record.error = {
       runId: record.identity.runId,
       category,
       component,
       message,
       elapsedActiveMs: Math.round(budget.consumedMs()),
-      recoverable: false,
-      fallbackAction: "Continue the original task with existing capabilities. Do not apply an unvalidated skill.",
+      recoverable: fallbackAction !== undefined,
+      fallbackAction: fallbackAction ?? "Continue the original task with existing capabilities. Do not apply an unvalidated skill.",
     };
     if (!alreadyTransitioned && !TERMINAL_STATES.has(record.state)) transition(record, "FAILED", message);
     record.metrics.activeMs = budget.consumedMs();
@@ -966,6 +1176,13 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+/** The harness-specific reload step (e.g. Claude Code's /reload-skills), carried in the activation message. */
+function reloadInstruction(activation: ActivationResult): string {
+  const msg = activation.message ?? "";
+  const reload = msg.split(/(?<=\.)\s+/).find((sentence) => /reload|restart|refresh/i.test(sentence));
+  return reload ?? "Reload or restart the session so it lists the skill.";
+}
+
 function packetPaths(packet: ContextPacket): string[] {
   return [
     ...packet.instructions.map((i) => i.path),
@@ -974,6 +1191,19 @@ function packetPaths(packet: ContextPacket): string[] {
     ...packet.existingSkills.map((s) => s.path),
     ...packet.evidence.map((e) => e.source),
   ];
+}
+
+/** Repository-relative file paths the packet was built from (no ".", no skill files, deduped). */
+function packetFilePaths(packet: ContextPacket): string[] {
+  return [...new Set(packetPaths(packet).filter((p) => p && p !== "." && !isSkillPath(p)))].sort().slice(0, 400);
+}
+
+/**
+ * Installed skills are not project context: a skill's own SKILL.md (or a sibling skill) must not
+ * make it look stale or block activation when Dynamic Skills itself writes to a skills directory.
+ */
+function isSkillPath(p: string): boolean {
+  return /(^|\/)\.(claude|agents|opencode)\/skills?\//.test(p) || /(^|\/)\.dynamic-skills(-runtime)?\//.test(p);
 }
 
 function dedupeSkills(skills: SkillInventoryItem[]): SkillInventoryItem[] {

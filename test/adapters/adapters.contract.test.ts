@@ -111,7 +111,7 @@ describe.each(CASES)("HarnessAdapter contract: $id", (c) => {
   });
 
   it("activates a skill at runtime: files exist, hash verified, instructions returned, reload when dir is new", async () => {
-    const { adapter, projectDir } = await setup();
+    const { adapter, projectDir, projectRoot } = await setup();
     const skill = makeSkill("runtime-skill", "Do the thing", [{ path: "references/notes.md", content: "notes\n" }]);
     const r = await adapter.loadSkillForSession(skill);
     expect(r.success).toBe(true);
@@ -124,8 +124,18 @@ describe.each(CASES)("HarnessAdapter contract: $id", (c) => {
     expect(r.message).toMatch(c.reloadText);
     expect(r.invocationHint).toContain("runtime-skill");
     expect(await readFile(path.join(projectDir, "runtime-skill/references/notes.md"), "utf8")).toBe("notes\n");
+    // The directory was created during this session, so the host is still not watching it.
     const again = await adapter.loadSkillForSession(makeSkill("another-skill"));
-    expect(again.requiresReload).toBe(false);
+    expect(again.requiresReload).toBe(true);
+    // A later session watches the directory from its start.
+    const nextSession = createAdapter(c.id, {
+      projectRoot,
+      homeDir: await tmpDir(),
+      sessionId: "ses_later",
+      env: { PATH: "" },
+      workspace: { repositoryId: "repo_test" },
+    });
+    expect((await nextSession.loadSkillForSession(makeSkill("third-skill"))).requiresReload).toBe(false);
   });
 
   it("refuses to overwrite a user's same-named skill", async () => {

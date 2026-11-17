@@ -1,0 +1,17 @@
+{
+  "name": "dynamic-skills-local",
+  "plugins": [
+    {
+      "name": "dynamic-skills",
+      "source": {
+        "source": "local",
+        "path": "./dynamic-skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

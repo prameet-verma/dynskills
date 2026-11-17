@@ -16,3 +16,4 @@ export * from "./activation/index.js";
 export * from "./adapter-sdk/index.js";
 export * from "./adapters/index.js";
 export * from "./orchestrator/index.js";
+export * from "./benchmark/index.js";

@@ -3,6 +3,7 @@ import path from "node:path";
 import type {
   ActivationResult,
   Assumption,
+  BaselineComparison,
   BudgetSnapshot,
   ClarificationRequest,
   DynamicSkillsConfig,
@@ -60,6 +61,25 @@ export interface RunRecord {
   activation?: Omit<ActivationResult, "instructions">;
   persistence?: { choice: PersistenceChoice; path?: string };
   reusedSkills?: SkillInventoryItem[];
+  /** §17: content hashes of every file in the packet at discovery time, re-checked before activation. */
+  discoveryFingerprint?: Record<string, string>;
+  /** §10.6: set when this run revises a stale persisted skill instead of creating a new one. */
+  revisionOf?: {
+    name: string;
+    scope: "project" | "personal";
+    previousVersion: string;
+    nextVersion: string;
+    previousArtifactHash: string;
+    decision: "augment" | "regenerate";
+    reasons: string[];
+    changedComponents: string[];
+  };
+  /** Version the generated skill is rendered with. */
+  skillVersion?: string;
+  /** §8.3 baseline comparison, when one ran. */
+  baseline?: BaselineComparison;
+  /** Files that changed after discovery but are not cited by the skill (reported, not fatal). */
+  uncitedChanges?: string[];
   error?: ErrorInfo;
   metrics: RunMetrics;
   /** §4.3 idempotency: the last accepted request and its response. */
@@ -78,6 +98,7 @@ export const RUN_FILES = {
   compilePrompt: "compile-prompt.md",
   draft: "skill-draft.json",
   evaluation: "evaluation-report.json",
+  evalCase: "behavioural-eval-case.json",
   clarificationRequest: "clarification-request.json",
   lock: ".lock",
 } as const;

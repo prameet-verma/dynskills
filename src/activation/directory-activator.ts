@@ -1,7 +1,7 @@
 import { rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ActivationAdapter, ActivationCapability, ActivationResult, GeneratedSkill, HarnessId } from "../contracts/index.js";
-import { errorMessage, hashSkillFiles, isoNow, writeDirAtomic } from "../core/index.js";
+import { errorMessage, hashSkillFiles, isoNow, readJsonIfExists, writeDirAtomic, writeJson } from "../core/index.js";
 import { isValidSkillDirName, readSkillDir } from "../storage/index.js";
 import { verifyActivation } from "./preference.js";
 import { InstallRegistry, inspectInstall, skillNameFromId } from "./registry.js";
@@ -16,6 +16,12 @@ export interface DirectorySkillActivatorOptions {
   invocationHint: (name: string) => string;
   /** JSON file recording installs so deactivate/clean only remove what Dynamic Skills installed. */
   registryPath: string;
+  /**
+   * Current session id. Claude Code does not watch a skills directory created after the session
+   * started, so every activation into a directory this session created needs a reload, not just
+   * the first one. Without a session id only the creating activation is flagged.
+   */
+  sessionId?: string;
 }
 
 /**
@@ -103,7 +109,8 @@ export class DirectorySkillActivator implements ActivationAdapter {
       });
     }
 
-    const requiresReload = !skillsDirExisted;
+    const createdBySession = await this.recordCreatedDir(skillsDir, skillsDirExisted);
+    const requiresReload = !skillsDirExisted || (this.opts.sessionId !== undefined && createdBySession === this.opts.sessionId);
     const notes = [`Skill "${skill.name}" installed at ${target} and verified (hash ${skill.artifactHash.slice(0, 12)}).`];
     notes.push("Its full instructions are included in this result; apply them for the current task.");
     if (requiresReload) {
@@ -123,6 +130,20 @@ export class DirectorySkillActivator implements ActivationAdapter {
       invocationHint: this.opts.invocationHint(skill.name),
       message: notes.join(" "),
     };
+  }
+
+  /**
+   * Remember which session created a skills directory (stored beside the install registry), and
+   * return the session that created `skillsDir`, if Dynamic Skills created it.
+   */
+  private async recordCreatedDir(skillsDir: string, existed: boolean): Promise<string | undefined> {
+    const file = path.join(path.dirname(this.opts.registryPath), "created-skill-dirs.json");
+    const created = (await readJsonIfExists<Record<string, { sessionId?: string; at: string }>>(file).catch(() => undefined)) ?? {};
+    if (!existed) {
+      created[skillsDir] = { ...(this.opts.sessionId ? { sessionId: this.opts.sessionId } : {}), at: isoNow() };
+      await writeJson(file, created);
+    }
+    return created[skillsDir]?.sessionId;
   }
 
   /** Remove ephemeral installs recorded for this skill id (or bare name). Never touches other directories. */

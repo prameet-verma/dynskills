@@ -10,6 +10,7 @@ import type {
   HarnessAdapter,
   HarnessId,
   HostCapabilities,
+  SkillFile,
   SkillInventoryItem,
   StorageScope,
   WorkspaceContext,
@@ -66,6 +67,16 @@ export abstract class BaseHarnessAdapter implements HarnessAdapter {
   /** Instruction for when the host must reload skills; undefined if the host has no explicit reload. */
   abstract reloadHint(name: string): string | undefined;
 
+  /**
+   * Harness-specific files installed beside a skill's canonical files (e.g. Codex
+   * `agents/openai.yaml`). Only used for the bootstrap skill and only when requested: §10.5 requires
+   * generated skills to stay identical across harness installs, so saveSkill/activation never add
+   * extras. Extras are excluded from the canonical hash comparison (see installBootstrap).
+   */
+  async harnessExtraFiles(_skillName: string): Promise<SkillFile[]> {
+    return [];
+  }
+
   /** Absolute native skills directory for a persistent scope. */
   skillsDirFor(scope: PersistentScope): string {
     return scope === "project" ? path.join(this.projectRoot, this.projectSkillsRel()) : path.join(this.homeDir, this.personalSkillsRel());
@@ -81,6 +92,7 @@ export abstract class BaseHarnessAdapter implements HarnessAdapter {
       harness: this.id,
       skillsDir: this.skillsDirFor("project"),
       capabilities: [...this.activationCapabilities],
+      sessionId: this.sessionId(),
       reloadHint: (name) => this.reloadHint(name) ?? `Restart or refresh the session if "${name}" is not listed; its instructions are included in this result.`,
       invocationHint: (name) => this.invocationHint(name),
       registryPath: installRegistryPath("project", this.id, { projectRoot: this.projectRoot, homeDir: this.homeDir }),

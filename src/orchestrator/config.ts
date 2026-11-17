@@ -48,6 +48,20 @@ export function resolveConfig(patch?: DeepPartial<DynamicSkillsConfig>): Dynamic
   if (cfg.generation.targetSkillTokens > cfg.generation.maximumSkillTokens) {
     throw dsError("configuration", "orchestrator", "generation.targetSkillTokens cannot exceed maximumSkillTokens", { recoverable: true });
   }
+  const enums: Array<[string, unknown, readonly string[]]> = [
+    ["mode", cfg.mode, ["auto", "explicit", "off"]],
+    ["discovery.mode", cfg.discovery.mode, ["hybrid", "programmatic"]],
+    ["generation.format", cfg.generation.format, ["agent-skills"]],
+    ["evaluation.generationChecks", cfg.evaluation.generationChecks, ["required"]],
+    ["evaluation.behaviouralSmokeEval", cfg.evaluation.behaviouralSmokeEval, ["required", "optional"]],
+    ["evaluation.baselineComparison", cfg.evaluation.baselineComparison, ["promotion-only", "always", "never"]],
+    ["lifecycle.defaultScope", cfg.lifecycle.defaultScope, ["ephemeral"]],
+  ];
+  for (const [key, value, allowed] of enums) {
+    if (!allowed.includes(value as string)) {
+      throw dsError("configuration", "orchestrator", `${CONFIG_FILE}: "${key}" must be one of ${allowed.map((a) => `"${a}"`).join(", ")}`, { recoverable: true });
+    }
+  }
   if (!cfg.lifecycle.requireApprovalForPersistence) {
     throw dsError("configuration", "orchestrator", "lifecycle.requireApprovalForPersistence cannot be disabled (§10.4)", { recoverable: true });
   }

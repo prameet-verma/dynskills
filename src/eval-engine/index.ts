@@ -10,6 +10,7 @@ export { checkPortability, HARNESS_SPECIFIC_FRONTMATTER } from "./portability.js
 export { checkSecurity, DANGEROUS_INSTRUCTIONS } from "./security.js";
 export { createBehaviouralEvalCase, runBehaviouralSmokeEval, BEHAVIOURAL_THRESHOLDS } from "./behavioural.js";
 export { evaluateSkill, GENERATION_CHECKS } from "./evaluate.js";
+export { compareWithBaseline, BASELINE_MIN_LIFT } from "./baseline.js";
 export { planRevision, DEFAULT_MINIMUM_LLM_REVISION_MS, DETERMINISTIC_FIXABLE_CODES } from "./revision.js";
 export type { RevisionAction } from "./revision.js";
 /** Re-exported so callers can build EvalContext.knownEvidenceIds / knownPaths from a packet. */

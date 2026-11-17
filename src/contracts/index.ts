@@ -501,6 +501,27 @@ export interface BehaviouralEvalResult {
   durationMs: number;
 }
 
+/**
+ * §8.3 skill-versus-no-skill comparison. The baseline is what the host already has without the
+ * skill: the repository's own instructions. Lift is the skill's extra coverage of the eval case.
+ */
+export interface BaselineComparison {
+  caseId: string;
+  mode: "static" | "host_simulation";
+  /** Share (0..1) of expected actions covered with the skill. */
+  skillCoverage: number;
+  /** Share (0..1) of expected actions covered by the baseline alone. */
+  baselineCoverage: number;
+  /** skillCoverage − baselineCoverage. */
+  lift: number;
+  /** Prohibited actions the baseline would allow that the skill rules out. */
+  prohibitionsAdded: number;
+  verdict: "improves" | "no_improvement" | "regresses";
+  /** Why the comparison ran: promotion, revision, regression or compiler change (§8.3). */
+  trigger: "promotion" | "revision" | "regression" | "always";
+  at: string;
+}
+
 export interface SkillEvaluationReport {
   runId: string;
   skillId: string;
@@ -596,6 +617,10 @@ export interface CanonicalBundleRecord {
   dependsOn: string[];
   /** Task description the skill was generated for. */
   task: string;
+  /** §8.3 baseline comparison recorded when the skill was promoted or revised. */
+  baseline?: BaselineComparison;
+  /** Previous versions this bundle replaced (newest first). */
+  history?: Array<{ skillVersion: string; artifactHash: string; replacedAt: string; reason: string }>;
 }
 
 export interface ContextFingerprint {
