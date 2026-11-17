@@ -30,6 +30,8 @@ export interface BuildContextPacketInput {
 const SHARES = { instructions: 0.3, configuration: 0.2, sources: 0.5 } as const;
 /** Share of maxFiles per category; unused share rolls forward. */
 const FILE_SHARES = { instructions: 0.3, configuration: 0.25, sources: 0.45 } as const;
+/** Share of the source-file budget reserved for files the task names explicitly. */
+const PRIORITY_SHARE = 0.7;
 /** Evidence is trimmed up-front when it alone would take more than this share of the budget. */
 const EVIDENCE_SHARE = 0.5;
 
@@ -326,9 +328,13 @@ export async function buildContextPacket(input: BuildContextPacketInput): Promis
     fileShare: number,
     pathOf: (t: T) => string,
     onInclude: (t: T, c: { content: string; truncated: boolean }, cost: number) => void,
+    isPriority: (t: T) => boolean = () => false,
   ) => {
     let tokens = Math.floor(available * share) + tokenCarry;
     let files = Math.floor(limits.maxFiles * fileShare) + fileCarry;
+    // Files the task names get most of the category, split among themselves; others share the rest.
+    let priorityTokens = Math.floor(tokens * PRIORITY_SHARE);
+    let priorityLeft = items.filter(isPriority).length;
     for (let i = 0; i < items.length; i++) {
       const item = items[i] as T;
       if (files <= 0 || filesAvailable <= 0) {
@@ -336,13 +342,18 @@ export async function buildContextPacket(input: BuildContextPacketInput): Promis
         tracker.filesSkipped++;
         continue;
       }
+      const priority = isPriority(item);
       // Fair share across the next few candidates so one large file cannot starve the rest.
       const remainingCount = Math.min(items.length - i, 4);
-      const cap = Math.floor(tokens / Math.max(1, remainingCount));
+      const cap = priority
+        ? Math.floor(Math.min(tokens, priorityTokens) / Math.max(1, priorityLeft))
+        : Math.floor(tokens / Math.max(1, remainingCount));
+      if (priority) priorityLeft--;
       const got = await include(pathOf(item), Math.max(cap, Math.min(tokens, MIN_USEFUL_TOKENS + ENTRY_OVERHEAD_TOKENS)));
       if (!got) continue;
       const cost = jsonTokens(got.content) + ENTRY_OVERHEAD_TOKENS;
       tokens -= cost;
+      if (priority) priorityTokens -= cost;
       files--;
       filesAvailable--;
       onInclude(item, got, cost);
@@ -368,6 +379,9 @@ export async function buildContextPacket(input: BuildContextPacketInput): Promis
       truncated: got.truncated,
       reason: `task-relevant${matched.length ? `: matched ${matched.map((m) => `'${m}'`).join(", ")}` : ""}`,
     });
+  }, (e) => {
+    const matched = rec(e.value).matched;
+    return Array.isArray(matched) && matched.some((m) => String(m).startsWith("named in task:"));
   });
   packet.sourceFiles = sourceFiles;
 
