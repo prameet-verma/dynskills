@@ -1,6 +1,6 @@
 ---
 name: dynamic-skill-bootstrap
-description: Identify missing task-specific expertise and invoke Dynamic Skills to discover live repository context, compile and evaluate a portable skill. Use when an existing skill or repository instructions are insufficient for a complex or specialised task.
+description: Identify missing task-specific expertise and invoke Dynamic Skills to discover live repository context, compile and evaluate a portable skill. Use at the start of a complex or specialised task, before exploring the code in depth, when existing skills and repository instructions don't cover it.
 metadata:
   dynamic-skills.role: bootstrap
   dynamic-skills.generator-version: 0.1.4
@@ -18,7 +18,15 @@ Invoke it only when **all** of these are true:
 2. No skill you already have covers it, and the repository instructions don't say how to do it here.
 3. Getting project conventions wrong would be costly.
 
-Don't invoke it for small edits, general questions or tasks an existing skill covers. Never invoke it from inside a run, so it can't call itself.
+Invoke it **early**, before you read the relevant code in depth. The skill's value is the project context it finds for you; once you've read everything yourself, a skill can only restate it.
+
+Don't invoke it when:
+
+- the task is a small edit, a general question, or covered by a skill you already have;
+- the relevant code is a handful of files you've already read, because the skill would only repeat what you know;
+- you're already partway through the implementation.
+
+If the user asks you to use it anyway in one of those cases, say briefly why it's unlikely to help, then do what they choose. Never invoke it from inside a run, so it can't call itself.
 
 ## Protocol
 
