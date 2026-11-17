@@ -139,6 +139,10 @@ DS_HARNESS_E2E=claude pnpm test:harness   # opt-in: real Claude Code sessions
 
 `typescript` in `devDependencies` is pinned to 6.0.3 because typescript-eslint uses its compiler API, and TypeScript 7 no longer ships that API. The project itself builds and type-checks with TypeScript 7.0.2, installed under the alias `typescript7`.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the required checks and how contributions are licensed.
+
 ## License
 
 dynskills is licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Copyright (C) 2026 Prameet Verma.
