@@ -138,3 +138,14 @@ DS_HARNESS_E2E=claude pnpm test:harness   # opt-in: real Claude Code sessions
 ```
 
 `typescript` in `devDependencies` is pinned to 6.0.3 because typescript-eslint uses its compiler API, and TypeScript 7 no longer ships that API. The project itself builds and type-checks with TypeScript 7.0.2, installed under the alias `typescript7`.
+
+## License
+
+dynskills is licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Copyright (C) 2026 Prameet Verma.
+
+- **Free to use.** You can use dynskills for any purpose, including commercial work.
+- **Share your changes.** If you distribute a modified version, or let others use it over a network, you must publish its complete source under the same licence.
+- **Generated skills are yours.** The skills and other files dynskills generates from your repository aren't covered by the AGPL; [NOTICE](NOTICE) grants this as an additional permission.
+
+Changes you keep private and never distribute or offer to others don't have to be published; no open-source licence can require that.
+

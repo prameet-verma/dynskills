@@ -19,7 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/prameet-verma/dynskills.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "bin": {
     "dynskills": "dist/cli/index.js",
@@ -37,7 +37,8 @@
     "dist",
     "skills",
     "schemas",
-    "plugins"
+    "plugins",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=26"

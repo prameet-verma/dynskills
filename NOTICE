@@ -1,0 +1,25 @@
+dynskills (Dynamic Skills)
+Copyright (C) 2026 Prameet Verma
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by the
+Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program (the LICENSE file). If not, see
+<https://www.gnu.org/licenses/>.
+
+Additional permission under GNU AGPL version 3 section 7
+
+Skills, context packets, evaluation reports and any other files that dynskills
+generates from your repository and your inputs ("Generated Output") are not
+covered by this License, even where they contain text taken from dynskills'
+templates. You may use, modify and distribute Generated Output under terms of
+your choice. This permission does not cover dynskills itself, including the
+bootstrap skill and the plugin files it installs, which remain under the
+GNU AGPL version 3.
