@@ -141,7 +141,7 @@ DS_HARNESS_E2E=claude pnpm test:harness   # opt-in: real Claude Code sessions
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the required checks and how contributions are licensed.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the required checks. Contributors sign a [Contributor License Agreement](CLA.md) before their first pull request is merged.
 
 ## License
 

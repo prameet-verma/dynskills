@@ -4,7 +4,15 @@ Thanks for helping improve dynskills. This guide covers setting up the project, 
 
 ## Licensing of contributions
 
-dynskills is licensed under the [GNU AGPL v3.0](LICENSE) (`AGPL-3.0-only`). By opening a pull request, you agree that your contribution is licensed under the same terms, and that you have the right to submit it.
+dynskills is licensed under the [GNU AGPL v3.0](LICENSE) (`AGPL-3.0-only`).
+
+**Before your first pull request can be merged, you must sign the [Contributor License Agreement](CLA.md).** The CLA Assistant bot will comment on your pull request with a link; signing takes one click with your GitHub account, and it covers all your future contributions.
+
+The CLA explained:
+
+- **You keep the copyright** in your code.
+- **You give the maintainer a broad licence to it**, including the right to release it under other terms, such as a commercial licence alongside the AGPL. This lets the project offer dual licensing without asking every past contributor.
+- **You confirm the code is yours to contribute.** If your employer owns what you write, get their permission first.
 
 If you distribute a modified version of dynskills, or let others use one over a network, the AGPL requires you to publish its source. Opening a pull request here is the easiest way to do that.
 
