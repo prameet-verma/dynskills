@@ -26,7 +26,7 @@ interface LiveSkillsFileData {
   skills: LiveSkillEntry[];
 }
 
-/** `<projectRoot>/.dynamic-skills-runtime/live-skills/<harness>.json` (read by plugins/opencode/dynamic-skills.js). */
+/** `<projectRoot>/.dynamic-skills-runtime/live-skills/<harness>.json` (read by plugins/opencode/dynskills.js). */
 export function liveSkillsPath(projectRoot: string, harness: HarnessId): string {
   return path.join(runtimeRoot(projectRoot), "live-skills", `${harness}.json`);
 }

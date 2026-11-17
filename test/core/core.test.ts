@@ -46,15 +46,15 @@ describe("fs-safety", () => {
 describe("redactSecrets", () => {
   it("redacts common secret shapes", () => {
     const input = [
-      "AWS=AKIAABCDEFGHIJKLMNOP",
-      "token: ghp_abcdefghijklmnopqrstuvwxyz0123456789AB",
+      `AWS=${"AKIA"}ABCDEFGHIJKLMNOP`,
+      `token: ${"ghp"}_abcdefghijklmnopqrstuvwxyz0123456789AB`,
       'apiKey = "supersecretvalue123"',
       "DATABASE_URL=postgres://user:hunter2@db:5432/x",
       "-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----",
     ].join("\n");
     const { text, redactions } = redactSecrets(input);
     expect(redactions).toBeGreaterThanOrEqual(5);
-    for (const s of ["AKIAABCDEFGHIJKLMNOP", "ghp_abc", "supersecretvalue123", "hunter2", "abc\n-----END"]) expect(text).not.toContain(s);
+    for (const s of [`${"AKIA"}ABCDEFGHIJKLMNOP`, `${"ghp"}_abc`, "supersecretvalue123", "hunter2", "abc\n-----END"]) expect(text).not.toContain(s);
   });
   it("leaves ordinary code alone", () => {
     const src = "const tokenizer = new Tokenizer();\nfunction getPassword() { return prompt(); }";

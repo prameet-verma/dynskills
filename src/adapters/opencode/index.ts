@@ -11,7 +11,7 @@ import { LiveSkillsFile, liveSkillEntryFrom, skillNameFromId } from "../../activ
  *
  * Live registration: every session activation is also written to
  * `<project>/.dynamic-skills-runtime/live-skills/opencode.json`. The Dynamic Skills OpenCode plugin
- * (`plugins/opencode/dynamic-skills.js`, installed into `.opencode/plugins/` or
+ * (`plugins/opencode/dynskills.js`, installed into `.opencode/plugins/` or
  * `~/.config/opencode/plugins/`) watches that file, adds the skills to OpenCode's registry with
  * `ctx.skill.transform` and calls `ctx.skill.reload()`. When the plugin file is installed, the
  * adapter advertises "live_skill_registration" first. It cannot observe whether the running

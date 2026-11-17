@@ -1,11 +1,11 @@
 {
-  "name": "dynamic-skills-local",
+  "name": "dynskills-local",
   "plugins": [
     {
-      "name": "dynamic-skills",
+      "name": "dynskills",
       "source": {
         "source": "local",
-        "path": "./dynamic-skills"
+        "path": "./dynskills"
       },
       "policy": {
         "installation": "AVAILABLE",

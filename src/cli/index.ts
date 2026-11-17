@@ -117,7 +117,7 @@ export function buildProgram(): Command {
           const adapter = createAdapter(id, { projectRoot: root, ...(g.home ? { homeDir: g.home } : {}) });
           await adapter.initialize();
           // With --native, Claude Code and Codex get the bootstrap from the plugin; installing the plain
-          // skill too would list it twice (the plugin copy is namespaced, e.g. /dynamic-skills:…).
+          // skill too would list it twice (the plugin copy is namespaced, e.g. /dynskills:…).
           const viaPlugin = opts.native && (id === "claude" || id === "codex");
           if (!viaPlugin) {
             const res = await installBootstrap({

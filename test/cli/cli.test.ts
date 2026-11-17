@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { TASK, analysisFor, draftFor, makeRepo, readPacket } from "../orchestrator/helpers.js";
+import { FAKE_STRIPE_KEY, TASK, analysisFor, draftFor, makeRepo, readPacket } from "../orchestrator/helpers.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const CLI = path.join(ROOT, "dist/cli/index.js");
@@ -47,7 +47,7 @@ describe("dynamic-skills CLI (built)", () => {
     const env = await makeRepo();
     const r = cli(["inspect", "--json"], env);
     expect(r.code, r.stderr).toBe(0);
-    expect(r.stdout).not.toContain("sk_test_51");
+    expect(r.stdout).not.toContain(FAKE_STRIPE_KEY);
     expect(JSON.stringify(r.json().technology)).toMatch(/express/i);
   });
 

@@ -7,7 +7,7 @@ Reference documentation for Dynamic Skills, a TypeScript tool that generates Age
 | Guide | What it covers |
 | --- | --- |
 | [Architecture](architecture.md) | Module map (src/ ↔ TechDesign ↔ exports), the lifecycle of one run, on-disk state, the state machine |
-| [Bridge protocol](bridge-protocol.md) | JSON contract of every `dynamic-skills run …` command: inputs, statuses, response fields, errors, exit codes, idempotency, locking, budget |
+| [Bridge protocol](bridge-protocol.md) | JSON contract of every `dynskills run …` command: inputs, statuses, response fields, errors, exit codes, idempotency, locking, budget |
 | [Configuration](configuration.md) | Every key of `dynamic-skills.config.json`, validation rules, environment variables |
 | [Evaluation](evaluation.md) | Generation checks and finding codes, behavioural smoke eval, revision policy, baseline comparison, `validate` |
 | [Security](security.md) | The §16 controls as implemented, and what is not protected against |
@@ -29,5 +29,5 @@ Reference documentation for Dynamic Skills, a TypeScript tool that generates Age
   - [015](adr/015-p0-evidence-kept.md) P0 evidence is never dropped, even past the packet's token budget
   - [016](adr/016-static-evaluation-stand-ins.md) Static baseline comparison and a deterministic stand-in host for benchmarks
   - [017](adr/017-skill-files-are-not-context.md) Installed skill files are excluded from freshness and change detection
-- [Performance benchmarks](../benchmarks/README.md) — how `dynamic-skills benchmark` measures §18.7 metrics and the 60 s SLA.
+- [Performance benchmarks](../benchmarks/README.md) — how `dynskills benchmark` measures §18.7 metrics and the 60 s SLA.
 - [JSON Schemas](../schemas/) — what the host must write for `analyze`, `clarify` and `compile`.

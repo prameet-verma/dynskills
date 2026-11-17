@@ -254,7 +254,7 @@ describe("checkSecurity", () => {
   });
 
   it("fails on embedded secrets", () => {
-    const r = checkSecurity(withSkillMd(SKILL, (md) => `${md}\nUse key AKIAABCDEFGHIJKLMNOP for staging.\n`), CTX);
+    const r = checkSecurity(withSkillMd(SKILL, (md) => `${md}\nUse key ${"AKIA"}ABCDEFGHIJKLMNOP for staging.\n`), CTX);
     expect(codes(r)).toContain("secret_detected");
   });
 

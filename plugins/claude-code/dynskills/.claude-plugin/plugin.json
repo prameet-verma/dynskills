@@ -1,5 +1,5 @@
 {
-  "name": "dynamic-skills",
+  "name": "dynskills",
   "version": "0.1.0",
   "description": "Generate checked, repository-specific Agent Skills just in time when existing skills don't cover a task.",
   "license": "MIT",

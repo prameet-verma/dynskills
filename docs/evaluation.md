@@ -209,7 +209,7 @@ How the orchestrator uses it in `run compile`:
 
 When it runs depends on `evaluation.baselineComparison`: on `run persist --choice project|personal` (trigger `promotion`, or `revision` when revising a saved skill) unless the setting is `never`; and additionally on every successful `compile` when it is `always`. The result is advisory: it never blocks activation or persistence. It is stored in the bundle record and returned as `baseline`; `persist`'s `next` suggests discarding a skill whose verdict is not `improves`.
 
-## `dynamic-skills validate <dir>`
+## `dynskills validate <dir>`
 
 `validate` evaluates an existing skill directory with a subset of the checks: `structural`, `conciseness`, `portability` and `security`. It does not run `grounding`, `scope`, `duplication` or the behavioural eval, because it has no run context.
 

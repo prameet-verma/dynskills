@@ -10,31 +10,31 @@ This guide covers how Dynamic Skills integrates with Claude Code, Codex and Open
 | Personal skills | `~/.claude/skills/` | `~/.agents/skills/` | `~/.config/opencode/skills/` |
 | Activation, in order | watched directory → instruction injection → explicit reload | watched directory → instruction injection → explicit reload | live registration (plugin installed) → watched directory → instruction injection |
 | Picks up new skills mid-session | Yes, for directories that existed when the session started; otherwise `/reload-skills` | Automatically; restart if a skill doesn't appear | Through the plugin's `ctx.skill.reload()` |
-| Explicit invocation | `/<skill-name>`, or `/dynamic-skills:generate-skill <task>` with the plugin | `$<skill-name>` | `@<skill-id>`, or `/dynamic-skills <task>` with the plugin |
+| Explicit invocation | `/<skill-name>`, or `/dynskills:generate-skill <task>` with the plugin | `$<skill-name>` | `@<skill-id>`, or `/dynamic-skills <task>` with the plugin |
 | Native integration (`init --native`) | Local plugin marketplace; you run 2 commands | Local plugin marketplace; install from `/plugins` | Plugin file in `.opencode/plugins/`, loaded at startup |
 | Tested in a live session | Yes (`pnpm test:harness`) | No, CLI not available here | No, CLI not available here |
 
 ## Installing
 
 ```bash
-dynamic-skills init --harness claude,codex,opencode            # bootstrap skill only
-dynamic-skills init --harness claude,codex,opencode --native   # plus native plugins
-dynamic-skills init --global ...                               # personal scope instead of project
+dynskills init --harness claude,codex,opencode            # bootstrap skill only
+dynskills init --harness claude,codex,opencode --native   # plus native plugins
+dynskills init --global ...                               # personal scope instead of project
 ```
 
 - **Without `--native`:** `init` copies `skills/dynamic-skill-bootstrap` into each harness's skills directory and confirms the harness can discover it.
 - **Codex extra file:** the Codex copy also gets `agents/openai.yaml` with its display name and `allow_implicit_invocation`. It's added only for the bootstrap, never for generated skills, which must stay byte-identical across harnesses (§10.5). It's left out of the hash comparison.
 - **With `--native`:**
   - **Claude Code and Codex:** `init` copies a plugin marketplace into `.dynamic-skills/marketplaces/<harness>/` and prints the commands to finish the install. Dynamic Skills never runs `claude` or `codex` itself. The bootstrap then comes from the plugin, so the plain skill is not installed as well; otherwise it would be listed twice.
-  - **OpenCode:** `init` installs the bootstrap skill and copies `plugins/opencode/dynamic-skills.js` into `.opencode/plugins/`.
+  - **OpenCode:** `init` installs the bootstrap skill and copies `plugins/opencode/dynskills.js` into `.opencode/plugins/`.
 - **Re-running `init`:** this is safe. Files are compared with what Dynamic Skills wrote last time, recorded in `.dynamic-skills-install.json` or by a marker in the plugin file. A file someone has edited is reported as a `conflict` and left alone unless you pass `--force`.
 
 ### Claude Code plugin (`plugins/claude-code/`)
 
 - `dynamic-skills/.claude-plugin/plugin.json`. It passes `claude plugin validate`.
 - `skills/dynamic-skill-bootstrap/SKILL.md`, a byte-identical copy of the bootstrap. A test keeps it in sync.
-- `skills/generate-skill/SKILL.md`, the explicit `/dynamic-skills:generate-skill <task>` command. It has `disable-model-invocation: true`, and it runs the bootstrap protocol with `--force-generate`.
-- `bin/dynamic-skills`, a POSIX wrapper that Claude Code puts on the Bash tool's PATH. It uses an installed `dynamic-skills` if there is one, otherwise `npx --yes dynamic-skills`, and guards against calling itself.
+- `skills/generate-skill/SKILL.md`, the explicit `/dynskills:generate-skill <task>` command. It has `disable-model-invocation: true`, and it runs the bootstrap protocol with `--force-generate`.
+- `bin/dynskills`, a POSIX wrapper that Claude Code puts on the Bash tool's PATH. It uses an installed `dynskills` if there is one, otherwise `npx --yes dynamic-skills`, and guards against calling itself.
 - There are no hooks. A SessionStart `reloadSkills` hook only re-finds skills that already exist at session start. It doesn't make Claude Code watch a directory created later.
 
 ### Codex plugin (`plugins/codex/`)
@@ -42,10 +42,10 @@ dynamic-skills init --global ...                               # personal scope 
 - A portable root `plugin.json` (`agent-plugins.org` schema) plus `skills/`, listed in `.agents/plugins/marketplace.json`.
 - Codex documents no non-interactive install. After `codex plugin marketplace add <dir>`, install it from `/plugins`. Its skills are available from the next Codex session.
 
-### OpenCode plugin (`plugins/opencode/dynamic-skills.js`)
+### OpenCode plugin (`plugins/opencode/dynskills.js`)
 
 - One self-contained file, because OpenCode loads every `.js` or `.ts` file in a plugins directory as a plugin. It targets the V2 plugin API (`Plugin.define({ id, setup(ctx) })`).
-- **Command:** it adds `/dynamic-skills` through `ctx.command.transform`.
+- **Command:** it adds `/dynskills` through `ctx.command.transform`.
 - **Live registration:** it reads `.dynamic-skills-runtime/live-skills/opencode.json` and registers each entry with `ctx.skill.transform`, adding or updating it by id. It watches that file and calls `ctx.skill.reload()` when it changes.
 - **Fallbacks:** if `@opencode/plugin` can't be imported, it exports a plain `{ id, setup }` object. If `ctx.skill` is missing, it skips live registration.
 

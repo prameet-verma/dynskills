@@ -1,4 +1,4 @@
-// Type declarations for dynamic-skills.js (used by the TypeScript tests; not installed into OpenCode).
+// Type declarations for dynskills.js (used by the TypeScript tests; not installed into OpenCode).
 
 export interface LiveSkill {
   id: string;

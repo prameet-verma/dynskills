@@ -41,7 +41,7 @@ Dynamic Skills works without configuration. To change a default, put a `dynamic-
 | `evaluation.baselineComparison` | `"promotion-only"` | `"promotion-only"`, `"always"`, `"never"` | When the skill-versus-no-skill comparison runs: on `persist` to project/personal (`promotion-only`); also on every successful `compile` (`always`); never (`never`). See [evaluation.md](evaluation.md#baseline-comparison). |
 | `lifecycle.defaultScope` | `"ephemeral"` | `"ephemeral"` | Not read by the code. New skills are always ephemeral until `persist`. |
 | `lifecycle.requireApprovalForPersistence` | `true` | `true` | Cannot be disabled (§10.4). |
-| `lifecycle.ephemeralRetentionHours` | `24` | number | `dynamic-skills clean` removes run directories (and ephemeral session installs) not updated for this long. `clean --all` uses 0. |
+| `lifecycle.ephemeralRetentionHours` | `24` | number | `dynskills clean` removes run directories (and ephemeral session installs) not updated for this long. `clean --all` uses 0. |
 
 "number" means the loader only checks the type. Discovery limits that are negative or non-finite fall back to their defaults when the packet is built.
 

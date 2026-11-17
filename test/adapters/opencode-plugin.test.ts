@@ -8,8 +8,8 @@ import plugin, {
   liveSkillsFileFor,
   readLiveSkills,
   resolveBrands,
-} from "../../plugins/opencode/dynamic-skills.js";
-import type { LiveSkill, SkillEditorLike, SkillInfoLike } from "../../plugins/opencode/dynamic-skills.js";
+} from "../../plugins/opencode/dynskills.js";
+import type { LiveSkill, SkillEditorLike, SkillInfoLike } from "../../plugins/opencode/dynskills.js";
 import { OpenCodeAdapter } from "../../src/adapters/index.js";
 import { makeSkill, tmpDir } from "../storage/helpers.js";
 
@@ -147,7 +147,7 @@ describe("OpenCode plugin: setup with a fake V2 context", () => {
   }
 
   it("default export is a { id, setup } plugin definition (fallback without @opencode/plugin)", () => {
-    expect(plugin.id).toBe("dynamic-skills");
+    expect(plugin.id).toBe("dynskills");
     expect(typeof plugin.setup).toBe("function");
   });
 
@@ -155,7 +155,7 @@ describe("OpenCode plugin: setup with a fake V2 context", () => {
     const root = await tmpDir();
     const f = fakeCtx(root);
     const cleanup = await createDynamicSkillsPlugin().setup(f.ctx);
-    expect(f.commands.map((c) => c.name)).toEqual(["dynamic-skills"]);
+    expect(f.commands.map((c) => c.name)).toEqual(["dynskills"]);
     await f.commands[0]!.execute({ sessionID: "ses_1", prompt: { text: "migrate the billing module", files: [] }, delivery: "steer" });
     expect(f.prompts[0]).toMatchObject({ sessionID: "ses_1", delivery: "steer", files: [] });
     const text = (f.prompts[0] as { text: string }).text;

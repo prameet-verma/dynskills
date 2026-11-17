@@ -31,13 +31,13 @@ describe("packaged plugin manifests", () => {
   it("Claude Code marketplace and plugin manifest have the required fields", async () => {
     const pkg = await json(path.join(ROOT, "package.json"));
     const market = await json(path.join(CLAUDE, ".claude-plugin/marketplace.json"));
-    expect(market.name).toBe("dynamic-skills-local");
+    expect(market.name).toBe("dynskills-local");
     expect((market.owner as { name?: unknown }).name).toEqual(expect.any(String));
     const plugins = market.plugins as Array<Record<string, unknown>>;
     expect(plugins).toHaveLength(1);
-    expect(plugins[0]).toMatchObject({ name: "dynamic-skills", source: "./dynamic-skills", description: expect.any(String) });
-    const manifest = await json(path.join(CLAUDE, "dynamic-skills/.claude-plugin/plugin.json"));
-    expect(manifest).toMatchObject({ name: "dynamic-skills", version: pkg.version, description: expect.any(String) });
+    expect(plugins[0]).toMatchObject({ name: "dynskills", source: "./dynskills", description: expect.any(String) });
+    const manifest = await json(path.join(CLAUDE, "dynskills/.claude-plugin/plugin.json"));
+    expect(manifest).toMatchObject({ name: "dynskills", version: pkg.version, description: expect.any(String) });
     // Only documented top-level keys (unknown keys are stripped with a warning by Claude Code).
     const allowed = ["name", "displayName", "version", "description", "author", "homepage", "repository", "license", "keywords"];
     expect(Object.keys(manifest).every((k) => allowed.includes(k))).toBe(true);
@@ -46,18 +46,18 @@ describe("packaged plugin manifests", () => {
   it("Codex marketplace and portable plugin manifest have the required fields", async () => {
     const pkg = await json(path.join(ROOT, "package.json"));
     const market = await json(path.join(CODEX, ".agents/plugins/marketplace.json"));
-    expect(market.name).toBe("dynamic-skills-local");
+    expect(market.name).toBe("dynskills-local");
     const plugins = market.plugins as Array<Record<string, unknown>>;
     expect(plugins[0]).toEqual({
-      name: "dynamic-skills",
-      source: { source: "local", path: "./dynamic-skills" },
+      name: "dynskills",
+      source: { source: "local", path: "./dynskills" },
       policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
       category: "Productivity",
     });
-    const manifest = await json(path.join(CODEX, "dynamic-skills/plugin.json"));
+    const manifest = await json(path.join(CODEX, "dynskills/plugin.json"));
     expect(manifest).toMatchObject({
       $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-      name: "dynamic-skills",
+      name: "dynskills",
       version: pkg.version,
       description: expect.any(String),
     });
@@ -65,7 +65,7 @@ describe("packaged plugin manifests", () => {
   });
 
   it("Codex openai.yaml declares interface and policy fields", async () => {
-    const y = parseYaml(await readFile(path.join(CODEX, "dynamic-skills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8")) as {
+    const y = parseYaml(await readFile(path.join(CODEX, "dynskills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8")) as {
       interface: Record<string, unknown>;
       policy: Record<string, unknown>;
     };
@@ -78,15 +78,15 @@ describe("packaged skills", () => {
   it("bootstrap copies stay byte-identical to skills/dynamic-skill-bootstrap/SKILL.md", async () => {
     const source = await readFile(BOOTSTRAP);
     for (const p of [
-      path.join(CLAUDE, "dynamic-skills/skills/dynamic-skill-bootstrap/SKILL.md"),
-      path.join(CODEX, "dynamic-skills/skills/dynamic-skill-bootstrap/SKILL.md"),
+      path.join(CLAUDE, "dynskills/skills/dynamic-skill-bootstrap/SKILL.md"),
+      path.join(CODEX, "dynskills/skills/dynamic-skill-bootstrap/SKILL.md"),
     ]) {
       expect((await readFile(p)).equals(source), `${p} differs from the bootstrap; copy it again`).toBe(true);
     }
   });
 
   it("generate-skill is an explicit-only command skill that forces generation", async () => {
-    const md = await readFile(path.join(CLAUDE, "dynamic-skills/skills/generate-skill/SKILL.md"), "utf8");
+    const md = await readFile(path.join(CLAUDE, "dynskills/skills/generate-skill/SKILL.md"), "utf8");
     const parsed = parseSkillMd(md);
     expect(parsed?.frontmatter).toMatchObject({ name: "generate-skill", "disable-model-invocation": true, "argument-hint": expect.any(String) });
     expect(parsed?.body).toContain("$ARGUMENTS");
@@ -95,8 +95,8 @@ describe("packaged skills", () => {
   });
 });
 
-describe("Claude Code bin/dynamic-skills launcher", () => {
-  const LAUNCHER = path.join(CLAUDE, "dynamic-skills/bin/dynamic-skills");
+describe("Claude Code bin/dynskills launcher", () => {
+  const LAUNCHER = path.join(CLAUDE, "dynskills/bin/dynskills");
 
   async function script(dir: string, name: string, body: string): Promise<void> {
     await mkdir(dir, { recursive: true });
@@ -108,15 +108,15 @@ describe("Claude Code bin/dynamic-skills launcher", () => {
     const root = await tmpDir("ds-launcher-");
     const pluginBin = path.join(root, "plugin/bin");
     await mkdir(pluginBin, { recursive: true });
-    await copyFile(LAUNCHER, path.join(pluginBin, "dynamic-skills"));
-    await chmod(path.join(pluginBin, "dynamic-skills"), 0o755);
+    await copyFile(LAUNCHER, path.join(pluginBin, "dynskills"));
+    await chmod(path.join(pluginBin, "dynskills"), 0o755);
     const npxDir = path.join(root, "npx");
     await script(npxDir, "npx", 'echo "npx $*"');
     return { root, pluginBin, npxDir };
   }
 
   async function launch(pluginBin: string, pathDirs: string[], extraEnv: Record<string, string> = {}) {
-    return run(path.join(pluginBin, "dynamic-skills"), ["run", "start"], { env: { PATH: [...pathDirs, "/usr/bin", "/bin"].join(":"), ...extraEnv } });
+    return run(path.join(pluginBin, "dynskills"), ["run", "start"], { env: { PATH: [...pathDirs, "/usr/bin", "/bin"].join(":"), ...extraEnv } });
   }
 
   it("is executable and valid POSIX sh", async () => {
@@ -127,17 +127,26 @@ describe("Claude Code bin/dynamic-skills launcher", () => {
   it("prefers a real dynamic-skills elsewhere on PATH", async () => {
     const { root, pluginBin, npxDir } = await setup();
     const real = path.join(root, "real");
-    await script(real, "dynamic-skills", 'echo "real $*"');
+    await script(real, "dynskills", 'echo "real $*"');
     expect((await launch(pluginBin, [pluginBin, real, npxDir])).stdout.trim()).toBe("real run start");
   });
 
-  it("falls back to npx, skipping itself and other launcher copies (no recursion)", async () => {
+  it("never falls back to npx: uses the local install, skipping itself and other launcher copies", async () => {
     const { root, pluginBin, npxDir } = await setup();
     const otherCopy = path.join(root, "other-plugin/bin");
     await mkdir(otherCopy, { recursive: true });
-    await copyFile(LAUNCHER, path.join(otherCopy, "dynamic-skills"));
-    await chmod(path.join(otherCopy, "dynamic-skills"), 0o755);
-    expect((await launch(pluginBin, [pluginBin, otherCopy, npxDir])).stdout.trim()).toBe("npx --yes dynamic-skills run start");
+    await copyFile(LAUNCHER, path.join(otherCopy, "dynskills"));
+    await chmod(path.join(otherCopy, "dynskills"), 0o755);
+    // No installation anywhere: fail clearly instead of downloading through npx.
+    const missing = await launch(pluginBin, [pluginBin, otherCopy, npxDir], { HOME: root }).catch((e: { code: number; stderr: string }) => e);
+    expect(missing).toMatchObject({ code: 127 });
+    expect((missing as { stderr: string }).stderr).toMatch(/no installation found/);
+    // The local install made by scripts/install-local.sh is used when PATH has none.
+    await script(path.join(root, ".local/share/dynskills/bin"), "dynskills", 'echo "local $*"');
+    expect((await launch(pluginBin, [pluginBin, otherCopy, npxDir], { HOME: root })).stdout.trim()).toBe("local run start");
+    // DYNAMIC_SKILLS_BIN takes precedence over the local install.
+    await script(path.join(root, "custom"), "ds", 'echo "custom $*"');
+    expect((await launch(pluginBin, [pluginBin, npxDir], { HOME: root, DYNAMIC_SKILLS_BIN: path.join(root, "custom/ds") })).stdout.trim()).toBe("custom run start");
   });
 
   it("fails fast when re-entered", async () => {

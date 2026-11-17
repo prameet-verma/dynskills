@@ -8,7 +8,7 @@
 
 ## Decision
 
-Ship one npm package, `dynamic-skills`. Each logical package from §12.1 is a folder under `src/` with its own `index.ts` barrel, and the `src/index.ts` root re-exports all of them.
+Ship one npm package, `dynskills`. Each logical package from §12.1 is a folder under `src/` with its own `index.ts` barrel, and the `src/index.ts` root re-exports all of them.
 
 ## Consequences
 

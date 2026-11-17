@@ -334,7 +334,7 @@ export class Orchestrator {
         if (record.analysisAttempts >= MAX_ANALYSIS_ATTEMPTS) {
           return this.degrade(record, budget, "schema", "context-analyzer", "Context Analysis Result stayed invalid after bounded correction attempts");
         }
-        return this.respond(record, budget, "invalid_input", `Fix the listed issues and resubmit with \`dynamic-skills run analyze ${runId} --input <file>\` (${MAX_ANALYSIS_ATTEMPTS - record.analysisAttempts} attempt(s) left).`, {
+        return this.respond(record, budget, "invalid_input", `Fix the listed issues and resubmit with \`dynskills run analyze ${runId} --input <file>\` (${MAX_ANALYSIS_ATTEMPTS - record.analysisAttempts} attempt(s) left).`, {
           issues: outcome.issues,
           schemaPath: schemaPath("context-analysis-result"),
         });
@@ -395,7 +395,7 @@ export class Orchestrator {
       if (!request) throw dsError("invalid_state", "orchestrator", "No pending clarification request", { runId, recoverable: false });
       const outcome = validateClarificationResponse(input, request);
       if (!outcome.valid || !outcome.value) {
-        return this.respond(record, budget, "invalid_input", `Fix the listed issues and resubmit with \`dynamic-skills run clarify ${runId} --input <file>\`. The SLA stays paused.`, {
+        return this.respond(record, budget, "invalid_input", `Fix the listed issues and resubmit with \`dynskills run clarify ${runId} --input <file>\`. The SLA stays paused.`, {
           issues: outcome.issues,
           request,
         });
@@ -562,7 +562,7 @@ export class Orchestrator {
           "Apply the skill instructions below to the original task now and resume it.",
           activation.requiresReload ? `The harness needs a reload before it lists the skill: ${reloadInstruction(activation)}` : "",
           activation.invocationHint ?? "",
-          `After the task, ask the user whether to keep the skill (project / global / temporary / discard) and run \`dynamic-skills run persist ${runId} --choice <project|personal|ephemeral|discard>\`.`,
+          `After the task, ask the user whether to keep the skill (project / global / temporary / discard) and run \`dynskills run persist ${runId} --choice <project|personal|ephemeral|discard>\`.`,
         ]
           .filter(Boolean)
           .join(" "),
@@ -710,7 +710,7 @@ export class Orchestrator {
         personal: `Saved globally for this user${revised} for ${where}.`,
         ephemeral: record.revisionOf
           ? "Kept for this session only; the saved version is unchanged."
-          : "Kept temporarily; `dynamic-skills clean` removes it after the retention period.",
+          : "Kept temporarily; `dynskills clean` removes it after the retention period.",
         discard: record.revisionOf ? "Discarded the revision; the saved version is unchanged." : "Discarded and removed from the session.",
       };
       const baselineNote =
@@ -730,7 +730,7 @@ export class Orchestrator {
     const record = await this.runs.load(runId);
     const budget = this.budgetFrom(record);
     const cmd = expectedCommand(record.state);
-    return this.respond(record, budget, "status", cmd ? `Run is waiting for \`dynamic-skills run ${cmd} ${runId}\`.` : "Run is finished.", {
+    return this.respond(record, budget, "status", cmd ? `Run is waiting for \`dynskills run ${cmd} ${runId}\`.` : "Run is finished.", {
       task: record.task.description,
       history: record.history,
       skill: record.skill,
@@ -812,7 +812,7 @@ export class Orchestrator {
           record,
           budget,
           "awaiting_clarification",
-          `Ask the user these questions in ONE native interaction, then submit {runId, round, answers:[{questionId, answer?, status}]} with \`dynamic-skills run clarify ${record.identity.runId} --input <file>\`. The SLA is paused while you wait for the user.`,
+          `Ask the user these questions in ONE native interaction, then submit {runId, round, answers:[{questionId, answer?, status}]} with \`dynskills run clarify ${record.identity.runId} --input <file>\`. The SLA is paused while you wait for the user.`,
           { request, schemaPath: schemaPath("clarification-response") },
         );
       }
@@ -843,7 +843,7 @@ export class Orchestrator {
       record,
       budget,
       "awaiting_skill_draft",
-      `Read the prompt at promptPath, write a SkillDraft JSON, and submit it with \`dynamic-skills run compile ${record.identity.runId} --input <file>\`. If drafting is not feasible within the budget, run \`dynamic-skills run compile ${record.identity.runId} --deterministic\`.`,
+      `Read the prompt at promptPath, write a SkillDraft JSON, and submit it with \`dynskills run compile ${record.identity.runId} --input <file>\`. If drafting is not feasible within the budget, run \`dynskills run compile ${record.identity.runId} --deterministic\`.`,
       { promptPath, schemaPath: schemaPath("skill-draft"), assumptions: record.assumptions, gaps: gaps.gaps },
     );
   }
@@ -877,7 +877,7 @@ export class Orchestrator {
       record,
       budget,
       "revision_required",
-      `Revise the SkillDraft to address every hint and resubmit once with \`dynamic-skills run compile ${record.identity.runId} --input <file>\`, or use --deterministic.`,
+      `Revise the SkillDraft to address every hint and resubmit once with \`dynskills run compile ${record.identity.runId} --input <file>\`, or use --deterministic.`,
       { hints, ...(report ? { evaluation: summarizeReport(report) } : {}), attemptsLeft: maxAttempts - record.compileAttempts },
     );
   }
@@ -1040,7 +1040,7 @@ export class Orchestrator {
       record,
       budget,
       "awaiting_analysis",
-      `Read the Context Packet at packetPath and write a ContextAnalysisResult JSON (schema at schemaPath; runId "${record.identity.runId}"). Cite packet evidence ids or file paths as sources; mark inferences as "inferred". Submit with \`dynamic-skills run analyze ${record.identity.runId} --input <file>\`.`,
+      `Read the Context Packet at packetPath and write a ContextAnalysisResult JSON (schema at schemaPath; runId "${record.identity.runId}"). Cite packet evidence ids or file paths as sources; mark inferences as "inferred". Submit with \`dynskills run analyze ${record.identity.runId} --input <file>\`.`,
       {
         packetPath: this.runs.fileFor(record, "packet"),
         schemaPath: schemaPath("context-analysis-result"),
@@ -1061,7 +1061,7 @@ export class Orchestrator {
     throw dsError("invalid_state", "orchestrator", `Run is in ${record.state}; \`${command}\` is not valid now`, {
       runId: record.identity.runId,
       recoverable: true,
-      fallbackAction: expected ? `Run \`dynamic-skills run ${expected} ${record.identity.runId}\`.` : "The run is finished; start a new one if needed.",
+      fallbackAction: expected ? `Run \`dynskills run ${expected} ${record.identity.runId}\`.` : "The run is finished; start a new one if needed.",
     });
   }
 

@@ -1,12 +1,12 @@
 {
-  "name": "dynamic-skills-local",
+  "name": "dynskills-local",
   "owner": {
     "name": "Dynamic Skills"
   },
   "plugins": [
     {
-      "name": "dynamic-skills",
-      "source": "./dynamic-skills",
+      "name": "dynskills",
+      "source": "./dynskills",
       "description": "Generate checked, repository-specific Agent Skills just in time when existing skills don't cover a task."
     }
   ],

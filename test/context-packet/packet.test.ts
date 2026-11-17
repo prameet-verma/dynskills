@@ -7,6 +7,9 @@ import { applyContextRequests, buildContextPacket, DEFAULT_DISCOVERY_LIMITS, ser
 import { buildFileIndex, RepositoryScanner } from "../../src/discovery/index.js";
 import { fixture, fixtureCopyWithExclusions, LIMITS, TASK, tmpDir } from "../discovery/helpers.js";
 
+/** Fake token assembled at runtime so no secret-shaped literal lives in the source. */
+const FAKE_GH_TOKEN = ["ghp", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij12"].join("_");
+
 async function packetFor(root: string, task: TaskIntent = TASK, limits: DiscoveryLimits = LIMITS): Promise<{ packet: ContextPacket; report: DiscoveryReport }> {
   const report = await new RepositoryScanner().scan({ root, task, limits });
   const packet = await buildContextPacket({ runId: "run_test", task, root, repository: { repositoryId: "repo_x", workingDirectory: root }, report, limits });
@@ -55,7 +58,7 @@ describe("buildContextPacket", () => {
 
   it("never includes sensitive files or excluded directories, and redacts secrets", async () => {
     const root = await fixtureCopyWithExclusions("node-ts-monorepo");
-    await writeFile(path.join(root, "packages/api/src/payments-client.ts"), 'export const token = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij12";\nexport const url = "postgres://admin:hunter2@db/payments";\n');
+    await writeFile(path.join(root, "packages/api/src/payments-client.ts"), `export const token = "${FAKE_GH_TOKEN}";\nexport const url = "postgres://admin:hunter2@db/payments";\n`);
     const { packet } = await packetFor(root);
     const json = serializePacket(packet);
     const paths = [
@@ -69,7 +72,7 @@ describe("buildContextPacket", () => {
     expect(json).not.toContain("BEGIN FAKE");
     expect(json).not.toContain("FAKE-not-a-real-secret");
     expect(json).not.toContain("FAKE_api_key_value_for_tests_0000");
-    expect(json).not.toContain("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij12");
+    expect(json).not.toContain(FAKE_GH_TOKEN);
     expect(json).not.toContain("hunter2");
     expect(packet.sourceFiles.find((s) => s.path === "packages/api/src/config.ts")?.content).toContain("[REDACTED]");
     expect(packet.sourceFiles.find((s) => s.path === "packages/api/src/payments-client.ts")?.content).toMatch(/token = "\[REDACTED/);

@@ -5,9 +5,9 @@ The benchmark suite drives real generation runs against the fixture repositories
 ## How to run
 
 ```bash
-dynamic-skills benchmark                       # all scenarios, Markdown table
-dynamic-skills benchmark --host-latency-ms 8000  # simulate 8 s of host LLM time per host turn
-dynamic-skills benchmark --json --out bench.json # full BenchmarkReport as JSON
+dynskills benchmark                       # all scenarios, Markdown table
+dynskills benchmark --host-latency-ms 8000  # simulate 8 s of host LLM time per host turn
+dynskills benchmark --json --out bench.json # full BenchmarkReport as JSON
 ```
 
 From code:

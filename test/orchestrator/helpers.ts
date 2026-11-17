@@ -3,6 +3,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ContextAnalysisResult, ContextPacket, SkillDraft } from "../../src/contracts/index.js";
 
+/** Fake, assembled at runtime so no secret-shaped literal lives in the source. */
+export const FAKE_STRIPE_KEY = ["sk", "test", "51FAKEFAKEFAKEFAKEFAKEFAKEFAKE00"].join("_");
+
 /** A small, realistic TypeScript service repository. */
 export async function makeRepo(): Promise<{ root: string; home: string }> {
   const root = await mkdtemp(path.join(tmpdir(), "ds-e2e-repo-"));
@@ -30,7 +33,7 @@ export async function makeRepo(): Promise<{ root: string; home: string }> {
     "src/payments/errors.ts": "export class PaymentError extends Error {\n  static from(err: unknown) { return new PaymentError(String(err)); }\n}\n",
     "src/payments/routes.ts": "import { Router } from 'express';\nimport { z } from 'zod';\nexport const router = Router();\nconst Charge = z.object({ amount: z.number().int().positive(), currency: z.string().length(3) });\nrouter.post('/charge', (req, res) => { const body = Charge.parse(req.body); res.json(body); });\n",
     "src/payments/gateway.test.ts": "import { describe, it, expect } from 'vitest';\ndescribe('gateway', () => { it('works', () => expect(1).toBe(1)); });\n",
-    ".env": `STRIPE_SECRET_KEY=${["sk", "test", "51ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"].join("_")}\n`,
+    ".env": `STRIPE_SECRET_KEY=${FAKE_STRIPE_KEY}\n`,
   };
   for (const [rel, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, rel)), { recursive: true });

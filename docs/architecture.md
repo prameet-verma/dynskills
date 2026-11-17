@@ -24,7 +24,7 @@ Dynamic Skills is one npm package ([ADR-010](adr/010-single-package.md)). Each l
 | `activation/` | §9 | Session activation into a watched skills directory, ownership registry, verification. | `DirectorySkillActivator`, `InstallRegistry`, `inspectInstall`, `verifyActivation` |
 | `adapter-sdk/`, `adapters/` | §9.3, §11 | Harness adapters for Claude Code, Codex and OpenCode. Covered by the harness adapters guide (docs/adapters.md, in progress). | `BaseHarnessAdapter`, `createAdapter`, `detectHarnesses`, `installBootstrap` |
 | `orchestrator/` | §3.2, §4, §15.5, §17, §19 | State machine, run store, config loading, the bridge commands. | `Orchestrator`, `BridgeResponse`, `canTransition`, `TERMINAL_STATES`, `expectedCommand`, `loadConfig`, `resolveConfig`, `RunStore`, `RUN_FILES` |
-| `cli/` | §14 | The `dynamic-skills` CLI (`init`, `doctor`, `validate`, `inspect`, `benchmark`, `list`, `clean`, `run …`). | `buildProgram` |
+| `cli/` | §14 | The `dynskills` CLI (`init`, `doctor`, `validate`, `inspect`, `benchmark`, `list`, `clean`, `run …`). | `buildProgram` |
 | `benchmark/` | §18.7 | Benchmark runner with a deterministic stand-in host. See [benchmarks/README.md](../benchmarks/README.md). | `runBenchmarks`, `formatBenchmarkTable`, `standInAnalysis` |
 
 ## Lifecycle of one run

@@ -29,11 +29,11 @@ describe("installNativeIntegration: Claude Code", () => {
     const f = files(r.actions);
     expect(f.length).toBeGreaterThanOrEqual(5);
     expect(f.every((a) => a.status === "created" && a.path?.startsWith(dir))).toBe(true);
-    expect(await readFile(path.join(dir, "dynamic-skills/skills/dynamic-skill-bootstrap/SKILL.md"))).toEqual(await readFile(path.join(BOOTSTRAP_DIR, "SKILL.md")));
-    expect((await stat(path.join(dir, "dynamic-skills/bin/dynamic-skills"))).mode & 0o111).toBe(0o111);
+    expect(await readFile(path.join(dir, "dynskills/skills/dynamic-skill-bootstrap/SKILL.md"))).toEqual(await readFile(path.join(BOOTSTRAP_DIR, "SKILL.md")));
+    expect((await stat(path.join(dir, "dynskills/bin/dynskills"))).mode & 0o111).toBe(0o111);
     const cmds = instructions(r.actions).map((a) => a.detail);
     expect(cmds.join("\n")).toContain(`claude plugin marketplace add ${dir}`);
-    expect(cmds.join("\n")).toContain("claude plugin install dynamic-skills@dynamic-skills-local --scope project");
+    expect(cmds.join("\n")).toContain("claude plugin install dynskills@dynskills-local --scope project");
     expect(instructions(r.actions).every((a) => a.status === "created")).toBe(true);
 
     const again = await installNativeIntegration({ harness: "claude", scope: "project", projectRoot, homeDir });
@@ -51,7 +51,7 @@ describe("installNativeIntegration: Claude Code", () => {
   it("reports a user-edited file as conflict, leaves it, and replaces it only with force", async () => {
     const { projectRoot, homeDir } = await dirs();
     await installNativeIntegration({ harness: "claude", scope: "project", projectRoot, homeDir });
-    const edited = path.join(projectRoot, ".dynamic-skills/marketplaces/claude/dynamic-skills/.claude-plugin/plugin.json");
+    const edited = path.join(projectRoot, ".dynamic-skills/marketplaces/claude/dynskills/.claude-plugin/plugin.json");
     await writeFile(edited, '{"name":"mine"}\n');
     const r = await installNativeIntegration({ harness: "claude", scope: "project", projectRoot, homeDir });
     expect(r.actions.find((a) => a.path === edited)?.status).toBe("conflict");
@@ -59,7 +59,7 @@ describe("installNativeIntegration: Claude Code", () => {
     expect(await readFile(edited, "utf8")).toBe('{"name":"mine"}\n');
     const forced = await installNativeIntegration({ harness: "claude", scope: "project", projectRoot, homeDir, force: true });
     expect(forced.actions.find((a) => a.path === edited)?.status).toBe("updated");
-    expect(JSON.parse(await readFile(edited, "utf8"))).toMatchObject({ name: "dynamic-skills" });
+    expect(JSON.parse(await readFile(edited, "utf8"))).toMatchObject({ name: "dynskills" });
   });
 
   it("reports a pre-existing differing file it never wrote as conflict", async () => {
@@ -79,15 +79,15 @@ describe("installNativeIntegration: Codex", () => {
     const r = await installNativeIntegration({ harness: "codex", scope: "personal", projectRoot, homeDir });
     const dir = path.join(homeDir, ".dynamic-skills/marketplaces/codex");
     expect(files(r.actions).every((a) => a.status === "created" && a.path?.startsWith(dir))).toBe(true);
-    expect(JSON.parse(await readFile(path.join(dir, ".agents/plugins/marketplace.json"), "utf8"))).toMatchObject({ name: "dynamic-skills-local" });
-    expect(await readFile(path.join(dir, "dynamic-skills/plugin.json"), "utf8")).toContain("agent-plugins.org");
-    expect(await readFile(path.join(dir, "dynamic-skills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8")).toContain("allow_implicit_invocation");
+    expect(JSON.parse(await readFile(path.join(dir, ".agents/plugins/marketplace.json"), "utf8"))).toMatchObject({ name: "dynskills-local" });
+    expect(await readFile(path.join(dir, "dynskills/plugin.json"), "utf8")).toContain("agent-plugins.org");
+    expect(await readFile(path.join(dir, "dynskills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8")).toContain("allow_implicit_invocation");
     const text = instructions(r.actions).map((a) => a.detail).join("\n");
     expect(text).toContain(`codex plugin marketplace add ${dir}`);
     expect(text).toContain("/plugins");
     expect((await installNativeIntegration({ harness: "codex", scope: "personal", projectRoot, homeDir })).actions.every((a) => a.status === "unchanged")).toBe(true);
 
-    const edited = path.join(dir, "dynamic-skills/plugin.json");
+    const edited = path.join(dir, "dynskills/plugin.json");
     await writeFile(edited, "{}\n");
     const conflict = await installNativeIntegration({ harness: "codex", scope: "personal", projectRoot, homeDir });
     expect(conflict.actions.find((a) => a.path === edited)?.status).toBe("conflict");
@@ -102,12 +102,12 @@ describe("installNativeIntegration: Codex", () => {
 });
 
 describe("installNativeIntegration: OpenCode", () => {
-  const SOURCE = path.join(ROOT, "plugins/opencode/dynamic-skills.js");
+  const SOURCE = path.join(ROOT, "plugins/opencode/dynskills.js");
 
   it("copies the plugin into .opencode/plugins (project) and ~/.config/opencode/plugins (personal)", async () => {
     const { projectRoot, homeDir } = await dirs();
     const r = await installNativeIntegration({ harness: "opencode", scope: "project", projectRoot, homeDir });
-    const dest = path.join(projectRoot, ".opencode/plugins/dynamic-skills.js");
+    const dest = path.join(projectRoot, ".opencode/plugins/dynskills.js");
     expect(opencodePluginsDir("project", { projectRoot, homeDir })).toBe(path.dirname(dest));
     expect(files(r.actions)).toEqual([expect.objectContaining({ path: dest, status: "created" })]);
     expect(await readFile(dest)).toEqual(await readFile(SOURCE));
@@ -115,12 +115,12 @@ describe("installNativeIntegration: OpenCode", () => {
     expect((await installNativeIntegration({ harness: "opencode", scope: "project", projectRoot, homeDir })).actions.every((a) => a.status === "unchanged")).toBe(true);
 
     const personal = await installNativeIntegration({ harness: "opencode", scope: "personal", projectRoot, homeDir });
-    expect(files(personal.actions)[0]?.path).toBe(path.join(homeDir, ".config/opencode/plugins/dynamic-skills.js"));
+    expect(files(personal.actions)[0]?.path).toBe(path.join(homeDir, ".config/opencode/plugins/dynskills.js"));
   });
 
   it("refuses to overwrite a differing file not written by Dynamic Skills unless forced; updates its own copies", async () => {
     const { projectRoot, homeDir } = await dirs();
-    const dest = path.join(projectRoot, ".opencode/plugins/dynamic-skills.js");
+    const dest = path.join(projectRoot, ".opencode/plugins/dynskills.js");
     await mkdir(path.dirname(dest), { recursive: true });
     await writeFile(dest, "export default {}\n");
     const r = await installNativeIntegration({ harness: "opencode", scope: "project", projectRoot, homeDir });
@@ -130,7 +130,7 @@ describe("installNativeIntegration: OpenCode", () => {
     expect(files((await installNativeIntegration({ harness: "opencode", scope: "project", projectRoot, homeDir, force: true })).actions)[0]?.status).toBe("updated");
 
     // An older Dynamic Skills copy (carries the marker) is updated without force.
-    await writeFile(dest, "// @dynamic-skills-opencode-plugin v0\nexport default {}\n");
+    await writeFile(dest, "// @dynskills-opencode-plugin v0\nexport default {}\n");
     expect(files((await installNativeIntegration({ harness: "opencode", scope: "project", projectRoot, homeDir })).actions)[0]?.status).toBe("updated");
     expect(await readFile(dest)).toEqual(await readFile(SOURCE));
   });
@@ -148,7 +148,7 @@ describe("Codex bootstrap extras (agents/openai.yaml)", () => {
     await expect(stat(path.join(target, "agents"))).rejects.toThrow();
     expect((await installBootstrap({ adapter, scope: "project", sourceDir: BOOTSTRAP_DIR, harnessExtras: true })).status).toBe("updated");
     const yaml = await readFile(path.join(target, "agents/openai.yaml"), "utf8");
-    expect(yaml).toBe(await readFile(path.join(ROOT, "plugins/codex/dynamic-skills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8"));
+    expect(yaml).toBe(await readFile(path.join(ROOT, "plugins/codex/dynskills/skills/dynamic-skill-bootstrap/agents/openai.yaml"), "utf8"));
     expect(await canonicalHash()).toBe(sourceHash);
     expect((await installBootstrap({ adapter, scope: "project", sourceDir: BOOTSTRAP_DIR, harnessExtras: true })).status).toBe("unchanged");
     expect((await installBootstrap({ adapter, scope: "project", sourceDir: BOOTSTRAP_DIR })).status).toBe("unchanged");

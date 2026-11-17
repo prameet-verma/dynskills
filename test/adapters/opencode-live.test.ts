@@ -29,10 +29,10 @@ describe("OpenCode adapter: capabilities", () => {
     expect(caps.pluginIntegration).toBe(true);
   });
 
-  it("ignores an unrelated file named dynamic-skills.js", async () => {
+  it("ignores an unrelated file named dynskills.js", async () => {
     const { adapter, projectRoot } = await setup();
     await mkdir(path.join(projectRoot, ".opencode/plugins"), { recursive: true });
-    await writeFile(path.join(projectRoot, ".opencode/plugins/dynamic-skills.js"), "export default {}\n");
+    await writeFile(path.join(projectRoot, ".opencode/plugins/dynskills.js"), "export default {}\n");
     expect((await adapter.getCapabilities()).activation[0]).toBe("watched_directory");
   });
 });
@@ -74,7 +74,7 @@ describe("OpenCode adapter: live-skill file on activation", () => {
     expect(r.instructions).toBe(skill.files[0]!.content);
     expect(r.message).toMatch(/if the plugin is loaded in this session/);
     expect(r.message).toMatch(/full instructions are included/);
-    expect(r.message).toContain(path.join(projectRoot, ".opencode/plugins/dynamic-skills.js"));
+    expect(r.message).toContain(path.join(projectRoot, ".opencode/plugins/dynskills.js"));
     expect((await live.list()).map((e) => e.id)).toEqual(["plugin-skill"]);
   });
 

@@ -1,10 +1,28 @@
 {
-  "name": "dynamic-skills",
+  "name": "dynskills",
   "version": "0.1.0",
-  "description": "Just-in-Time Skill Synthesizer for AI coding agents",
-  "type": "module",
+  "description": "Dynamic Skills: a just-in-time skill synthesizer for AI coding agents (Claude Code, Codex, OpenCode)",
+  "keywords": [
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "opencode",
+    "ai-agents",
+    "skills",
+    "llm"
+  ],
+  "homepage": "https://github.com/prameet-verma/dynskills#readme",
+  "bugs": {
+    "url": "https://github.com/prameet-verma/dynskills/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prameet-verma/dynskills.git"
+  },
   "license": "MIT",
+  "type": "module",
   "bin": {
+    "dynskills": "dist/cli/index.js",
     "dynamic-skills": "dist/cli/index.js"
   },
   "main": "dist/index.js",
@@ -30,7 +48,10 @@
     "test": "vitest run",
     "lint": "eslint src",
     "test:harness": "DS_HARNESS_E2E=claude vitest run test/harness",
-    "bench": "pnpm build && node dist/cli/index.js benchmark"
+    "bench": "pnpm build && node dist/cli/index.js benchmark",
+    "install:local": "sh scripts/install-local.sh",
+    "uninstall:local": "sh scripts/install-local.sh --uninstall",
+    "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
     "ajv": "^8.20.0",

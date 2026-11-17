@@ -1,4 +1,6 @@
-# Dynamic Skills
+# dynskills
+
+**Dynamic Skills for coding agents.** Package and command: `dynskills` (`dynamic-skills` also works as an alias).
 
 A **Just-in-Time Skill Synthesizer** for AI coding agents. When an agent has no skill that covers a specialised task, Dynamic Skills does four things:
 
@@ -19,11 +21,24 @@ Dynamic Skills supports Claude Code, OpenAI Codex and OpenCode, and produces one
 ## Install
 
 ```bash
-npx dynamic-skills init                      # detect harnesses, install the bootstrap skill (project scope)
-npx dynamic-skills init --harness claude,codex,opencode --global
-npx dynamic-skills init --native             # also install native plugins (Claude Code/Codex marketplaces, OpenCode live-registry plugin)
-npx dynamic-skills doctor                    # diagnose installation and compatibility
+npm install -g dynskills                 # puts `dynskills` (and the `dynamic-skills` alias) on PATH
+dynskills init                           # detect harnesses, install the bootstrap skill (project scope)
+dynskills init --harness claude,codex,opencode --global
+dynskills init --native                  # also install native plugins (Claude Code/Codex marketplaces, OpenCode live-registry plugin)
+dynskills doctor                         # diagnose installation and compatibility
 ```
+
+Install it globally rather than running it through `npx`. Coding agents call the `dynskills` command directly on every step of a run.
+
+### Install from a checkout (local testing)
+
+```bash
+pnpm install
+pnpm install:local       # build, pack, install into ~/.local/share/dynskills, link into ~/.local/bin
+pnpm uninstall:local     # remove it again
+```
+
+The linked command runs with the Node ≥ 26 binary it was installed with, even when your shell defaults to an older Node. Make sure `~/.local/bin` is on your `PATH`.
 
 `init` installs `skills/dynamic-skill-bootstrap` into each harness's native skills directory:
 
@@ -62,11 +77,11 @@ Rules every run follows:
 ## Other commands
 
 ```bash
-dynamic-skills validate ./my-skill   # structural, conciseness, portability and security checks
-dynamic-skills inspect               # discovery profile for the current repository
-dynamic-skills list                  # persisted bundles and generated skills
-dynamic-skills clean [--all]         # remove expired ephemeral runs and session installs
-dynamic-skills benchmark             # §18.7 benchmarks (repository checkout; see benchmarks/README.md)
+dynskills validate ./my-skill   # structural, conciseness, portability and security checks
+dynskills inspect               # discovery profile for the current repository
+dynskills list                  # persisted bundles and generated skills
+dynskills clean [--all]         # remove expired ephemeral runs and session installs
+dynskills benchmark             # §18.7 benchmarks (repository checkout; see benchmarks/README.md)
 ```
 
 Saved skills are reused only after a freshness check. A stale one is revised instead, with a version bump: a minor version when it is augmented and a major version when it is regenerated. Before activation, files the skill relies on are re-checked, and a change since discovery blocks activation. Promoting a skill records a baseline comparison against the repository's own instructions.
@@ -93,7 +108,7 @@ src/
   lifecycle/                  fingerprints, freshness, lifecycle transitions
   adapter-sdk/, adapters/     harness adapters (Claude Code, Codex, OpenCode)
   orchestrator/               state machine, run store, bridge commands
-  cli/                        `dynamic-skills` CLI
+  cli/                        `dynskills` CLI
 skills/dynamic-skill-bootstrap/  the always-discoverable bootstrap skill
 schemas/                      published JSON Schemas
 fixtures/                     test repositories
@@ -101,7 +116,7 @@ fixtures/                     test repositories
 
 ## Known limitations
 
-- **Live-session tests cover Claude Code only.** Codex and OpenCode adapters are tested against their documented skill directories in temp dirs, because their CLIs aren't installed here. Run `pnpm test:harness` to repeat the Claude Code tests (they start real sessions).
+- **Live-session tests cover Claude Code only.** Four tests run in real Claude Code sessions: discovery, explicit invocation, a clarification round with a global save, and automatic invocation. The Codex and OpenCode adapters are tested only against their documented skill directories, in temporary folders, because no authenticated Codex or OpenCode CLI was available here. Run `pnpm test:harness` to repeat the Claude Code tests; they start real sessions.
 - **The packet can exceed its token budget in very large repositories.** P0 evidence is never dropped (ADR-015).
 - **Baseline comparison is static.** It measures how much more of the task the skill covers than the repository instructions do, not how an agent performs with it (ADR-016).
 - **Benchmarks exclude LLM time** unless it is simulated with `--host-latency-ms`.

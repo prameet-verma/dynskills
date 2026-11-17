@@ -1,6 +1,6 @@
 # Bridge protocol
 
-The root agent drives a generation run through `dynamic-skills run …` commands ([ADR-012](adr/012-cli-bridge.md)). Each command is one process: it reads JSON input, advances the run's state machine, and prints one JSON object on stdout. The `next` field tells the agent exactly what to do next. This guide is the contract for harness integrators; the implementation is `src/orchestrator/orchestrator.ts` and `src/cli/index.ts`.
+The root agent drives a generation run through `dynskills run …` commands ([ADR-012](adr/012-cli-bridge.md)). Each command is one process: it reads JSON input, advances the run's state machine, and prints one JSON object on stdout. The `next` field tells the agent exactly what to do next. This guide is the contract for harness integrators; the implementation is `src/orchestrator/orchestrator.ts` and `src/cli/index.ts`.
 
 ## Conventions
 
@@ -38,7 +38,7 @@ Command-specific fields are added at the top level. A `degraded` or `failed` res
 ### `run start`
 
 ```text
-dynamic-skills run start --task <text> [--harness <id>] [--scope <path>]… [--constraint <text>]… [--expected-outcome <text>] [--force-generate]
+dynskills run start --task <text> [--harness <id>] [--scope <path>]… [--constraint <text>]… [--expected-outcome <text>] [--force-generate]
 ```
 
 Creates a run, then runs preflight and discovery in the same process. `--scope` and `--constraint` are repeatable. `--force-generate` skips reuse of existing skills.
@@ -132,7 +132,7 @@ Valid in `ACTIVE` or `PERSISTENCE_PENDING`. Call it only after the user chose (�
 | Choice | Effect |
 | --- | --- |
 | `project` / `personal` | Verify the staged artifact still matches its evaluated hash; run the baseline comparison (unless `baselineComparison: "never"`); remove the session install (new skills only); install byte-identical copies into each harness's project or personal skills directory; verify each copy's hash; write the canonical bundle (`.dynamic-skills/bundles/<name>` or `~/.dynamic-skills/bundles/<name>`). A revision replaces the saved bundle and records the old version in `history`. |
-| `ephemeral` | No change. A new skill stays installed for the session until `dynamic-skills clean`; for a revision, the saved version stays unchanged. |
+| `ephemeral` | No change. A new skill stays installed for the session until `dynskills clean`; for a revision, the saved version stays unchanged. |
 | `discard` | Remove the session install (new skills only) and the staged directory. |
 
 Response: `status: "completed"`, `state: "COMPLETED"`, plus `persistence` {`choice`, `path`?}, `skillVersion`, `installs` [{`harness`, `scope`, `path`, `artifactHash`, `installedAt`}] for project/personal, and `baseline` when one ran. If the baseline verdict is not `improves`, `next` suggests discarding the skill.
@@ -141,7 +141,7 @@ If saving fails, the run still completes and the skill stays ephemeral: `persist
 
 ### `run status <runId>`
 
-Valid in any state. Read-only: no lock, no idempotency record, no budget check. `status` is always `"status"`. Extra fields: `task` (description), `history` [{`from`, `to`, `at`, `note`?}], `skill`, `evaluation`, `persistence`, `error`, `metrics`. `next` is `Run is waiting for \`dynamic-skills run <cmd> <runId>\`.` for `CONTEXT_ANALYSIS` (analyze), `CLARIFICATION_PENDING` (clarify), `COMPILATION` (compile), `ACTIVE`/`PERSISTENCE_PENDING` (persist); otherwise `Run is finished.`
+Valid in any state. Read-only: no lock, no idempotency record, no budget check. `status` is always `"status"`. Extra fields: `task` (description), `history` [{`from`, `to`, `at`, `note`?}], `skill`, `evaluation`, `persistence`, `error`, `metrics`. `next` is `Run is waiting for \`dynskills run <cmd> <runId>\`.` for `CONTEXT_ANALYSIS` (analyze), `CLARIFICATION_PENDING` (clarify), `COMPILATION` (compile), `ACTIVE`/`PERSISTENCE_PENDING` (persist); otherwise `Run is finished.`
 
 ### `run cancel <runId>`
 
@@ -165,7 +165,7 @@ When a command cannot produce a response (wrong state, unknown run, bad argument
     "component": "orchestrator",
     "message": "Run is in CONTEXT_ANALYSIS; `compile` is not valid now",
     "recoverable": true,
-    "fallbackAction": "Run `dynamic-skills run analyze run_…`.",
+    "fallbackAction": "Run `dynskills run analyze run_…`.",
     "runId": "run_…"
   }
 }
@@ -215,7 +215,7 @@ Each run has an active-processing budget (`execution.activeBudgetMs`, default an
 Abbreviated output of a real run (paths shortened, `next` trimmed).
 
 ```text
-$ dynamic-skills run start --task "Add Stripe refund support to the billing service payment gateway"
+$ dynskills run start --task "Add Stripe refund support to the billing service payment gateway"
 { "status": "awaiting_analysis", "runId": "run_9b3fc128442d", "state": "CONTEXT_ANALYSIS",
   "budget": { "consumedMs": 32, "remainingMs": 59968, "paused": false, "clarificationRoundsUsed": 0 },
   "packetPath": ".dynamic-skills-runtime/sessions/sess_demo/runs/run_9b3fc128442d/context-packet.json",
@@ -223,20 +223,20 @@ $ dynamic-skills run start --task "Add Stripe refund support to the billing serv
   "packetSummary": { "languages": ["TypeScript"], "frameworks": ["Express@4.19.2", "Vitest@2.0.5", "Zod@3.23.8"], "evidence": 17, "estimatedTokens": 1709 },
   "discovery": { "providers": [ { "id": "manifest", "status": "ok", "evidence": 3 }, … ], "evidence": 17, "filesRead": 5, "truncated": false } }
 
-$ dynamic-skills run analyze run_9b3fc128442d --input analysis.json      # one critical unknown
+$ dynskills run analyze run_9b3fc128442d --input analysis.json      # one critical unknown
 { "status": "awaiting_clarification", "state": "CLARIFICATION_PENDING",
   "budget": { "consumedMs": 167, "remainingMs": 59833, "paused": true, … },
   "request": { "runId": "run_9b3fc128442d", "round": 1, "maximumRounds": 3,
                "questions": [ { "id": "q_322bbe2ac419", "question": "Should refunds be partial, full, or both?", "reason": "…", "required": true } ] },
   "schemaPath": "…/schemas/clarification-response.schema.json" }
 
-$ dynamic-skills run clarify run_9b3fc128442d --input answers.json
+$ dynskills run clarify run_9b3fc128442d --input answers.json
 { "status": "awaiting_skill_draft", "state": "COMPILATION",
   "budget": { "consumedMs": 172, "remainingMs": 59828, "paused": false, "clarificationRoundsUsed": 1 },
   "promptPath": "…/runs/run_9b3fc128442d/compile-prompt.md", "schemaPath": "…/schemas/skill-draft.schema.json",
   "assumptions": [], "gaps": [ … ] }
 
-$ dynamic-skills run compile run_9b3fc128442d --input draft.json
+$ dynskills run compile run_9b3fc128442d --input draft.json
 { "status": "active", "state": "PERSISTENCE_PENDING",
   "skill": { "name": "stripe-refund-integration", "skillId": "stripe-refund-integration@d8dbf56e725f",
              "installedPath": "<repo>/.claude/skills/stripe-refund-integration", "tokenCount": 369 },
@@ -245,15 +245,15 @@ $ dynamic-skills run compile run_9b3fc128442d --input draft.json
   "evaluation": { "status": "pass", "checks": { "structural": "pass", "grounding": "pass", … }, "behavioural": "pass", "hints": [] },
   "deterministicFixes": [], "assumptions": [], "lifetime": "ephemeral", "skillVersion": "1.0.0" }
 
-$ dynamic-skills run persist run_9b3fc128442d --choice project
+$ dynskills run persist run_9b3fc128442d --choice project
 { "status": "completed", "state": "COMPLETED", "next": "Saved in this project as v1.0.0 for claude. …",
   "persistence": { "choice": "project", "path": "<repo>/.dynamic-skills/bundles/stripe-refund-integration" },
   "skillVersion": "1.0.0",
   "installs": [ { "harness": "claude", "scope": "project", "path": "<repo>/.claude/skills/stripe-refund-integration", "artifactHash": "d8dbf56e…", "installedAt": "…" } ],
   "baseline": { "skillCoverage": 1, "baselineCoverage": 0.667, "lift": 0.333, "prohibitionsAdded": 1, "verdict": "improves", "trigger": "promotion", … } }
 
-$ dynamic-skills run persist run_9b3fc128442d --choice project            # identical repeat → cached response
-$ dynamic-skills run cancel run_9b3fc128442d
+$ dynskills run persist run_9b3fc128442d --choice project            # identical repeat → cached response
+$ dynskills run cancel run_9b3fc128442d
 { "status": "status", "state": "COMPLETED", "next": "Run already finished.", … }
 ```
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { LiveSkillsFile, liveSkillEntryFrom, liveSkillsPath } from "../../src/activation/index.js";
-import { liveSkillsFileFor } from "../../plugins/opencode/dynamic-skills.js";
+import { liveSkillsFileFor } from "../../plugins/opencode/dynskills.js";
 import { skillMd, tmpDir } from "../storage/helpers.js";
 
 describe("live-skill file", () => {

@@ -1,0 +1,56 @@
+#!/bin/sh
+# dynskills plugin launcher (DYNAMIC_SKILLS_PLUGIN_WRAPPER).
+#
+# Claude Code adds a plugin's bin/ directory to the Bash tool's PATH, so this file is itself the
+# first `dynskills` on PATH. It runs a real `dynskills` installation found elsewhere on
+# PATH. Otherwise it tries $DYNAMIC_SKILLS_BIN, then the local install made by scripts/install-local.sh
+# (~/.local/share/dynskills/bin/dynskills). It never falls back to npx: the package name is
+# not reserved on the npm registry, so npx could run an unrelated package.
+#
+# Recursion guards:
+#   - this directory, and any other copy of this launcher (identified by the marker above), is
+#     skipped while searching PATH;
+#   - DYNAMIC_SKILLS_PLUGIN_WRAPPER is exported before exec, so a re-entry fails fast instead of
+#     looping.
+set -u
+
+if [ -n "${DYNAMIC_SKILLS_PLUGIN_WRAPPER:-}" ]; then
+  echo "dynskills: plugin launcher re-entered; no real dynskills executable was found (refusing to recurse)" >&2
+  exit 127
+fi
+DYNAMIC_SKILLS_PLUGIN_WRAPPER=1
+export DYNAMIC_SKILLS_PLUGIN_WRAPPER
+
+case "$0" in
+  */*) self_dir=${0%/*} ;;
+  *) self_dir=. ;;
+esac
+self_dir=$(CDPATH= cd -- "$self_dir" 2>/dev/null && pwd -P) || self_dir=""
+
+set -f
+old_ifs=$IFS
+IFS=:
+for dir in ${PATH:-}; do
+  IFS=$old_ifs
+  [ -n "$dir" ] || continue
+  cand_dir=$(CDPATH= cd -- "$dir" 2>/dev/null && pwd -P) || continue
+  [ "$cand_dir" = "$self_dir" ] && continue
+  for name in dynskills dynamic-skills; do
+    candidate="$dir/$name"
+    [ -f "$candidate" ] && [ -x "$candidate" ] || continue
+    grep -q "DYNAMIC_SKILLS_PLUGIN_WRAPPER" "$candidate" 2>/dev/null && continue
+    set +f
+    exec "$candidate" "$@"
+  done
+done
+IFS=$old_ifs
+set +f
+
+for candidate in "${DYNAMIC_SKILLS_BIN:-}" "${HOME:-}/.local/share/dynskills/bin/dynskills"; do
+  [ -n "$candidate" ] && [ -f "$candidate" ] && [ -x "$candidate" ] || continue
+  grep -q "DYNAMIC_SKILLS_PLUGIN_WRAPPER" "$candidate" 2>/dev/null && continue
+  exec "$candidate" "$@"
+done
+
+echo "dynskills: no installation found. Install Dynamic Skills (scripts/install-local.sh in its repository) or set DYNAMIC_SKILLS_BIN." >&2
+exit 127

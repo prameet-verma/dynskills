@@ -45,11 +45,11 @@ const PLUGIN_SOURCE_DIRS: Readonly<Record<HarnessId, string>> = {
 };
 
 /** Name of the plugin in every packaged marketplace. */
-export const NATIVE_PLUGIN_NAME = "dynamic-skills";
+export const NATIVE_PLUGIN_NAME = "dynskills";
 /** File name of the OpenCode plugin (also what the OpenCode adapter checks for). */
-export const OPENCODE_PLUGIN_FILE = "dynamic-skills.js";
+export const OPENCODE_PLUGIN_FILE = "dynskills.js";
 /** Marker string carried by the OpenCode plugin file; identifies a copy written by Dynamic Skills. */
-export const OPENCODE_PLUGIN_MARKER = "@dynamic-skills-opencode-plugin";
+export const OPENCODE_PLUGIN_MARKER = "@dynskills-opencode-plugin";
 /** Ownership manifest written into a copied marketplace directory. */
 const MARKETPLACE_MANIFEST = ".dynamic-skills-install.json";
 
@@ -191,7 +191,7 @@ async function marketplaceName(file: string, fallback: string): Promise<string> 
 async function installClaude(input: NativeIntegrationInput): Promise<NativeIntegrationAction[]> {
   const { dir, actions } = await copyMarketplace(input);
   const status = overallStatus(actions);
-  const marketplace = await marketplaceName(path.join(dir, ".claude-plugin", "marketplace.json"), "dynamic-skills-local");
+  const marketplace = await marketplaceName(path.join(dir, ".claude-plugin", "marketplace.json"), "dynskills-local");
   const claudeScope = input.scope === "personal" ? "user" : "project";
   const prefix = status === "conflict" ? "After resolving the conflicts above (or re-running with force): " : "";
   const pluginDir = path.join(dir, NATIVE_PLUGIN_NAME);
@@ -218,7 +218,7 @@ async function installClaude(input: NativeIntegrationInput): Promise<NativeInteg
 async function installCodex(input: NativeIntegrationInput): Promise<NativeIntegrationAction[]> {
   const { dir, actions } = await copyMarketplace(input);
   const status = overallStatus(actions);
-  const marketplace = await marketplaceName(path.join(dir, ".agents", "plugins", "marketplace.json"), "dynamic-skills-local");
+  const marketplace = await marketplaceName(path.join(dir, ".agents", "plugins", "marketplace.json"), "dynskills-local");
   const prefix = status === "conflict" ? "After resolving the conflicts above (or re-running with force): " : "";
   return [
     ...actions,

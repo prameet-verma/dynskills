@@ -7,7 +7,7 @@ import { resolveConfig } from "../../src/orchestrator/config.js";
 import { canTransition } from "../../src/orchestrator/state-machine.js";
 import { DynamicSkillsError } from "../../src/core/index.js";
 import type { ClarificationRequest, HarnessId } from "../../src/contracts/index.js";
-import { TASK, analysisFor, draftFor, makeRepo, readPacket } from "./helpers.js";
+import { FAKE_STRIPE_KEY, TASK, analysisFor, draftFor, makeRepo, readPacket } from "./helpers.js";
 
 /** Fake monotonic clock so SLA behaviour is deterministic. */
 function fakeClock(start = 1_000_000) {
@@ -37,7 +37,7 @@ describe("orchestrator end-to-end", () => {
       const runId = res.runId;
 
       // Discovery respected exclusions and redaction.
-      expect(JSON.stringify(packet)).not.toContain("sk_test_51ABCDEF");
+      expect(JSON.stringify(packet)).not.toContain(FAKE_STRIPE_KEY);
       expect(packet.evidence.some((e) => e.source === ".env")).toBe(false);
       expect(packet.technology.languages.map((l) => l.toLowerCase())).toContain("typescript");
 

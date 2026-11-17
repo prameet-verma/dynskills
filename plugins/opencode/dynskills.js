@@ -1,10 +1,10 @@
-// @dynamic-skills-opencode-plugin v1
+// @dynskills-opencode-plugin v1
 //
-// Dynamic Skills integration for OpenCode V2 (installed by `dynamic-skills init` into
+// Dynamic Skills integration for OpenCode V2 (installed by `dynskills init` into
 // `.opencode/plugins/` or `~/.config/opencode/plugins/`).
 //
 // It does two things:
-//   (a) adds a `dynamic-skills` command (via `ctx.command.transform`, when available) that asks the
+//   (a) adds a `dynskills` command (via `ctx.command.transform`, when available) that asks the
 //       agent to run the Dynamic Skills protocol with `--force-generate` for the given task;
 //   (b) live-registers skills that Dynamic Skills activated for this project. The OpenCode adapter
 //       writes them to `<project>/.dynamic-skills-runtime/live-skills/opencode.json`; this plugin
@@ -33,9 +33,9 @@
 import { existsSync, readFileSync, unwatchFile, watch, watchFile } from "node:fs";
 import path from "node:path";
 
-export const PLUGIN_ID = "dynamic-skills";
-export const PLUGIN_MARKER = "@dynamic-skills-opencode-plugin";
-export const COMMAND_NAME = "dynamic-skills";
+export const PLUGIN_ID = "dynskills";
+export const PLUGIN_MARKER = "@dynskills-opencode-plugin";
+export const COMMAND_NAME = "dynskills";
 export const DEBOUNCE_MS = 150;
 export const POLL_INTERVAL_MS = 1000;
 
@@ -209,7 +209,7 @@ export function commandPrompt(task) {
   const t = typeof task === "string" ? task.trim() : "";
   return [
     'Load the `dynamic-skill-bootstrap` skill with the skill tool and run its Dynamic Skills protocol for the task below. Skip its "When to invoke" checks: the user asked for a generated skill explicitly.',
-    'Start the run with `dynamic-skills run start --harness opencode --force-generate --task "<task>"` (use `npx --yes dynamic-skills` if `dynamic-skills` is not on PATH), then follow each step\'s `next` field. Ask before persisting the skill.',
+    'Start the run with `dynskills run start --harness opencode --force-generate --task "<task>"` (if `dynskills` is not found, ask the user to install Dynamic Skills; never use `npx`), then follow each step\'s `next` field. Ask before persisting the skill.',
     "",
     t ? `Task: ${t}` : "Task: (none given. Ask the user which task the skill is for.)",
   ].join("\n");

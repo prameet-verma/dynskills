@@ -143,7 +143,7 @@ export class RunStore {
     throw dsError("invalid_state", "orchestrator", `Unknown run: ${runId}`, {
       runId,
       recoverable: true,
-      fallbackAction: "Start a new run with `dynamic-skills run start`.",
+      fallbackAction: "Start a new run with `dynskills run start`.",
     });
   }
 

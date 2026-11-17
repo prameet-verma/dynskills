@@ -22,12 +22,12 @@ Don't invoke it for small edits, general questions or tasks an existing skill co
 
 ## Protocol
 
-Run each step with the `dynamic-skills` CLI. Use `npx dynamic-skills` if it isn't installed globally. Every command prints JSON with `status`, `runId` and `next`. Follow `next`.
+Run each step with the `dynskills` CLI. If the command isn't found, stop and ask the user to install Dynamic Skills. Never run it through `npx`, which could download an unrelated package with the same name. Every command prints JSON with `status`, `runId` and `next`. Follow `next`.
 
 The whole generation has **60 seconds of active time**, and the time you spend thinking counts. Only time spent waiting for the user is excluded, so work in compact steps.
 
 1. **Start:**
-   `dynamic-skills run start --harness <claude|codex|opencode> --task "<one-paragraph task>"`
+   `dynskills run start --harness <claude|codex|opencode> --task "<one-paragraph task>"`
    You can repeat `--constraint "<text>"` and `--scope <path>`, and add `--expected-outcome "<text>"`.
    - `reuse_existing`: an existing skill is enough. Load it and continue.
    - `awaiting_analysis`: go to step 2.
@@ -36,16 +36,16 @@ The whole generation has **60 seconds of active time**, and the time you spend t
    - Mark claims you read directly as `observed` and conclusions you reasoned as `inferred`. Never present an inference as an observation.
    - List genuine unknowns. Put any extra files you need in `additionalContextRequests`, with targeted paths only.
 
-   Submit it with `dynamic-skills run analyze <runId> --input <file>`.
-3. **Clarify (`awaiting_clarification`).** Ask the user the listed questions together in one round, using your harness's native question tool. Then submit their answers with `dynamic-skills run clarify <runId> --input <file>`.
+   Submit it with `dynskills run analyze <runId> --input <file>`.
+3. **Clarify (`awaiting_clarification`).** Ask the user the listed questions together in one round, using your harness's native question tool. Then submit their answers with `dynskills run clarify <runId> --input <file>`.
    - Record each answer as `answered`, `declined` or `skipped`. Don't ask anything that isn't in the request.
    - There are at most 3 rounds. Questions that are declined or still unanswered become documented assumptions.
-4. **Compile (`awaiting_skill_draft`).** Read the prompt at `promptPath`. Write a `SkillDraft` JSON that follows the schema at `schemaPath`, then run `dynamic-skills run compile <runId> --input <file>`.
-   If you're short on time or a draft isn't feasible, run `dynamic-skills run compile <runId> --deterministic` instead.
+4. **Compile (`awaiting_skill_draft`).** Read the prompt at `promptPath`. Write a `SkillDraft` JSON that follows the schema at `schemaPath`, then run `dynskills run compile <runId> --input <file>`.
+   If you're short on time or a draft isn't feasible, run `dynskills run compile <runId> --deterministic` instead.
    - `revision_required`: fix exactly the listed `hints` and resubmit once.
    - `active`: the skill passed its mandatory checks and is installed for this session.
 5. **Use it.** Apply the returned `instructions`, which are the full `SKILL.md`, to the original task right away. If `requiresReload` is true, also follow `invocationHint` so the harness registers the skill. Then resume and finish the user's task.
-6. **Persistence.** After the task, ask the user whether to keep the skill: save it in this project, save it globally, keep it temporarily or discard it. Then run `dynamic-skills run persist <runId> --choice <project|personal|ephemeral|discard>`.
+6. **Persistence.** After the task, ask the user whether to keep the skill: save it in this project, save it globally, keep it temporarily or discard it. Then run `dynskills run persist <runId> --choice <project|personal|ephemeral|discard>`.
    Never choose for them. Saving permanently always needs their explicit approval.
 
 ## Fallback rules
