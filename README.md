@@ -2,6 +2,14 @@
 
 **Dynamic Skills for coding agents.** Package and command: `dynskills` (`dynamic-skills` also works as an alias).
 
+> [!WARNING]
+> **Experimental.** dynskills is in early development (`0.x`).
+> - **Breaking changes:** commands, configuration and file formats may change in any release until 1.0.
+> - **Live testing:** only Claude Code has been tested in live sessions so far. Codex and OpenCode support is tested against their documented skill folders, but not yet in live sessions.
+> - **Review generated skills** before saving them to a project or globally.
+>
+> Bug reports and feedback are welcome in [issues](https://github.com/prameet-verma/dynskills/issues).
+
 A **Just-in-Time Skill Synthesizer** for AI coding agents. When an agent has no skill that covers a specialised task, Dynamic Skills does four things:
 
 1. Discovers the live repository context.
