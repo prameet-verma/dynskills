@@ -2,7 +2,7 @@ export { buildFileIndex, DEFAULT_MAX_INDEX_ENTRIES } from "./file-index.js";
 export { RepositoryScanner, createDefaultProviders, type ScanInput } from "./scanner.js";
 export { discoverExistingSkills, readSkillMetadata, PROJECT_SKILL_DIRS, PERSONAL_SKILL_DIRS } from "./skills-inventory.js";
 export { getRepositoryIdentity, normalizeRemoteUrl } from "./repo-identity.js";
-export { extractKeywords, taskKeywords, taskScopePaths, rankPaths, scorePath, isSourcePath, type PathScore } from "./relevance.js";
+export { extractKeywords, taskKeywords, taskMentionedPaths, taskScopePaths, rankPaths, scorePath, isSourcePath, type PathScore } from "./relevance.js";
 export { isDocumentationPath } from "./providers/documentation.js";
 export { matchInstructionFile } from "./providers/instructions.js";
 export { FileSystemProvider } from "./providers/filesystem.js";

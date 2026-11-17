@@ -32,8 +32,43 @@ export function extractKeywords(text: string): string[] {
   return [...out];
 }
 
+/** Path-like tokens in free text ("lib/script-engine.js", "inject.js"); resolved against real files by taskMentionedPaths. */
+const PATH_MENTION = /(?<![\w@/.-])\.?\/?((?:[\w@.-]+\/)*[\w@-][\w@.-]*\.[A-Za-z][A-Za-z0-9]{0,5})(?![\w/])/g;
+
+function taskText(task: TaskIntent): string {
+  return [task.description, task.expectedOutcome ?? "", ...(task.constraints ?? [])].join(" ");
+}
+
+/**
+ * Keywords from the task, ignoring file paths it names. A named path is matched as a file
+ * (taskMentionedPaths); splitting it into words would make "lib" in "lib/script-engine.js" match
+ * every file under lib/.
+ */
 export function taskKeywords(task: TaskIntent): string[] {
-  return extractKeywords([task.description, task.expectedOutcome ?? "", ...(task.scope ?? []).filter((s) => !s.includes("/") && !s.includes("."))].join(" "));
+  const text = [taskText(task).replace(PATH_MENTION, " "), ...(task.scope ?? []).filter((s) => !s.includes("/") && !s.includes("."))].join(" ");
+  return extractKeywords(text);
+}
+
+/**
+ * Repository files the task names explicitly: an exact relative path, a unique path suffix
+ * ("content/inject.js"), or a unique file name ("inject.js"). Mentions that match no file, or
+ * several files, are ignored.
+ */
+export function taskMentionedPaths(task: TaskIntent, fileIndex: readonly string[]): string[] {
+  const files = new Set(fileIndex);
+  const out = new Set<string>();
+  for (const m of taskText(task).matchAll(PATH_MENTION)) {
+    const mention = (m[1] ?? "").replace(/^\.\//, "");
+    if (!mention) continue;
+    if (files.has(mention)) {
+      out.add(mention);
+      continue;
+    }
+    const suffix = `/${mention}`;
+    const hits = fileIndex.filter((f) => f.endsWith(suffix));
+    if (hits.length === 1) out.add(hits[0] as string);
+  }
+  return [...out];
 }
 
 /** Task scope entries that look like repository paths (normalized, no leading ./ or trailing /). */
@@ -50,10 +85,13 @@ export interface PathScore {
   matched: string[];
 }
 
-const TEST_PATH = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.(go|py)$|(^|\/)test_[^/]+\.py$/;
+export const TEST_PATH = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.(go|py)$|(^|\/)test_[^/]+\.py$/;
 
-/** Score a path against keywords and scope paths. 0 = irrelevant. */
-export function scorePath(p: string, keywords: string[], scopePaths: string[] = []): PathScore {
+/** Score bonus for a file the task names explicitly; outranks any keyword match. */
+export const MENTIONED_PATH_SCORE = 10;
+
+/** Score a path against keywords, scope paths and files the task names. 0 = irrelevant. */
+export function scorePath(p: string, keywords: string[], scopePaths: string[] = [], mentioned: ReadonlySet<string> = new Set()): PathScore {
   const segments = p.split("/");
   const file = segments[segments.length - 1] ?? "";
   const fileTokens = tokenize(file.replace(/\.[^.]+$/, "")).map(stem);
@@ -63,11 +101,16 @@ export function scorePath(p: string, keywords: string[], scopePaths: string[] = 
   for (const k of keywords) {
     let best = 0;
     for (const t of fileTokens) best = Math.max(best, t === k ? 3 : k.length >= 4 && t.length >= 4 && (t.startsWith(k) || k.startsWith(t)) ? 1.5 : 0);
-    for (const t of dirTokens) best = Math.max(best, t === k ? 2 : k.length >= 4 && t.length >= 4 && (t.startsWith(k) || k.startsWith(t)) ? 1 : 0);
+    // A folder name alone ("lib", "content") is weak evidence that a file matters.
+    for (const t of dirTokens) best = Math.max(best, t === k ? 1 : k.length >= 4 && t.length >= 4 && (t.startsWith(k) || k.startsWith(t)) ? 0.5 : 0);
     if (best > 0) {
       score += best;
       matched.add(k);
     }
+  }
+  if (mentioned.has(p)) {
+    score += MENTIONED_PATH_SCORE;
+    matched.add(`named in task: ${p}`);
   }
   for (const s of scopePaths) {
     if (p === s || p.startsWith(`${s}/`)) {
@@ -75,17 +118,23 @@ export function scorePath(p: string, keywords: string[], scopePaths: string[] = 
       matched.add(`scope:${s}`);
     }
   }
-  if (score > 0 && TEST_PATH.test(p)) score -= 0.5;
+  if (score > 0 && TEST_PATH.test(p) && !mentioned.has(p)) score -= 0.5;
   // Slight preference for shallower paths, never enough to outrank a keyword match.
   if (score > 0) score -= Math.min(segments.length, 10) * 0.01;
   return { path: p, score: Math.round(score * 100) / 100, matched: [...matched] };
 }
 
 /** Rank candidate paths by relevance; ties broken lexicographically for determinism. */
-export function rankPaths(paths: readonly string[], keywords: string[], scopePaths: string[], limit: number): PathScore[] {
-  if (!keywords.length && !scopePaths.length) return [];
+export function rankPaths(
+  paths: readonly string[],
+  keywords: string[],
+  scopePaths: string[],
+  limit: number,
+  mentioned: ReadonlySet<string> = new Set(),
+): PathScore[] {
+  if (!keywords.length && !scopePaths.length && !mentioned.size) return [];
   return paths
-    .map((p) => scorePath(p, keywords, scopePaths))
+    .map((p) => scorePath(p, keywords, scopePaths, mentioned))
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
     .slice(0, limit);
