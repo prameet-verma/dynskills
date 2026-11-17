@@ -1,4 +1,4 @@
-# Performance benchmarks (TechDesign §18.7)
+# Performance benchmarks
 
 The benchmark suite drives real generation runs against the fixture repositories in [`fixtures/`](../fixtures). Each scenario in [`scenarios.json`](scenarios.json) has a known task and known expected context. Every run is measured end to end on the same monotonic clock the SLA controller uses.
 

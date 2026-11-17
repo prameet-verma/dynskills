@@ -1,6 +1,6 @@
 # Security
 
-Generated skills are instructions that change how a coding agent behaves, so they are treated as security-relevant artifacts (TechDesign §16). This guide lists the controls the code implements, where they live, and what they do not cover.
+Generated skills are instructions that change how a coding agent behaves, so they are treated as security-relevant artifacts (design §16). This guide lists the controls the code implements, where they live, and what they do not cover.
 
 ## Summary
 

@@ -11,7 +11,7 @@ A **Just-in-Time Skill Synthesizer** for AI coding agents. When an agent has no 
 
 The host agent stays in charge of the task throughout.
 
-Dynamic Skills supports Claude Code, OpenAI Codex and OpenCode, and produces one portable skill format for all three. It has no agent runtime, database or server of its own. See [`TechDesign.md`](TechDesign.md) for the architecture.
+Dynamic Skills supports Claude Code, OpenAI Codex and OpenCode, and produces one portable skill format for all three. It has no agent runtime, database or server of its own. See [docs/architecture.md](docs/architecture.md) for the architecture.
 
 ## Requirements
 
@@ -86,7 +86,7 @@ dynskills benchmark             # §18.7 benchmarks (repository checkout; see be
 
 Saved skills are reused only after a freshness check. A stale one is revised instead, with a version bump: a minor version when it is augmented and a major version when it is regenerated. Before activation, files the skill relies on are re-checked, and a change since discovery blocks activation. Promoting a skill records a baseline comparison against the repository's own instructions.
 
-Optional configuration goes in `dynamic-skills.config.json` (see TechDesign §19). The defaults work without one.
+Optional configuration goes in `dynamic-skills.config.json` (see [docs/configuration.md](docs/configuration.md)). The defaults work without one.
 
 ## Layout
 

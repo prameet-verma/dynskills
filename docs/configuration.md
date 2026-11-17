@@ -73,7 +73,7 @@ Constants that are not configurable: at most 3 invalid `analyze` submissions, at
 
 Git is run with `GIT_TERMINAL_PROMPT=0` and `GIT_OPTIONAL_LOCKS=0` added to the environment when reading repository identity. No other environment variables are read.
 
-## Differences from TechDesign §19
+## Differences from the design (§19)
 
 - The code adds `discovery.maximumFileBytes`, `maximumTotalBytes`, `providerTimeoutMs`, `concurrency` and `lifecycle.ephemeralRetentionHours`.
 - `mode: "explicit"`, `discovery.mode`, `evaluation.generationChecks` and `lifecycle.defaultScope` are accepted but have no effect.

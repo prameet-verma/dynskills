@@ -2,11 +2,11 @@
 
 This guide maps the code to the design. It is for contributors who need to find where a behaviour lives. For the JSON contract the root agent sees, read [bridge-protocol.md](bridge-protocol.md).
 
-Dynamic Skills is one npm package ([ADR-010](adr/010-single-package.md)). Each logical module from TechDesign §12.1 is a folder under `src/` with an `index.ts` barrel, and `src/index.ts` re-exports all of them. The core owns no LLM: the root agent (the host) writes the Context Analysis Result and the SkillDraft; the core does everything deterministic and owns state, budget and evaluation (TechDesign §3, ADR-001).
+Dynamic Skills is one npm package ([ADR-010](adr/010-single-package.md)). Each logical module from design §12.1 is a folder under `src/` with an `index.ts` barrel, and `src/index.ts` re-exports all of them. The core owns no LLM: the root agent (the host) writes the Context Analysis Result and the SkillDraft; the core does everything deterministic and owns state, budget and evaluation (design §3, ADR-001).
 
 ## Module map
 
-| Module (`src/…`) | TechDesign | Responsibility | Main exports |
+| Module (`src/…`) | Design § | Responsibility | Main exports |
 | --- | --- | --- | --- |
 | `contracts/` | §4–§11, §17, §19 | Shared, versioned types and constants. Every other module depends on it. | `GenerationState`, `DEFAULT_CONFIG`, `DynamicSkillsConfig`, `STAGE_BUDGET_MS`, `HARNESS_IDS`, `ContextPacket`, `ContextAnalysisResult`, `SkillDraft`, `GeneratedSkill`, `SkillEvaluationReport`, `CanonicalBundleRecord`, `ErrorInfo` |
 | `core/` | §5.2, §6.4, §16, §17 | Errors, monotonic clock, hashing, token estimates, safe file reads, redaction, atomic writes, timeouts. | `DynamicSkillsError`, `dsError`, `monotonicNowMs`, `clockEpoch`, `sha256`, `hashSkillFiles`, `estimateTokens`, `readTextFileBounded`, `isExcludedPath`, `isSensitivePath`, `resolveRealInsideRoot`, `redactSecrets`, `writeFileAtomic`, `writeDirAtomic`, `withTimeout`, `mapWithConcurrency`, `newId`, `evidenceId` |
@@ -189,7 +189,7 @@ What the orchestrator actually does with these edges:
 | `ACTIVE` → `PERSISTENCE_PENDING` | Always, in the same `compile` call. A successful `compile` therefore reports state `PERSISTENCE_PENDING`. |
 | `ACTIVE` → `COMPLETED` | Not used by the orchestrator. |
 
-### Differences from TechDesign §4.1
+### Differences from the design (§4.1)
 
 - The design diagram has no `CONTEXT_ANALYSIS` self-loop; the code uses it for targeted discovery (§5.5).
 - The design shows `DEGRADED` only from `DISCOVERY` and `FAILED` only from `COMPILATION`, `GENERATION_EVAL` and `ACTIVATION`. The code allows both from every non-terminal state except `ACTIVE` and `PERSISTENCE_PENDING`, and has an explicit `BEHAVIOURAL_EVAL → FAILED`.

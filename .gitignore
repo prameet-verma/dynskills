@@ -4,3 +4,4 @@ coverage/
 .dynamic-skills-runtime/
 *.log
 .DS_Store
+TechDesign.md

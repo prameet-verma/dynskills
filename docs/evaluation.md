@@ -1,6 +1,6 @@
 # Evaluation
 
-Every generated skill is evaluated after rendering and before activation (TechDesign §8). This guide lists what each check looks for, which failures block activation, and how revisions and the baseline comparison work. The code is in `src/eval-engine/`.
+Every generated skill is evaluated after rendering and before activation (design §8). This guide lists what each check looks for, which failures block activation, and how revisions and the baseline comparison work. The code is in `src/eval-engine/`.
 
 ## How a report is built
 
@@ -219,7 +219,7 @@ When it runs depends on `evaluation.baselineComparison`: on `run persist --choic
 - Status: `fail` if any of the four checks failed, `warning` if any is not `pass`, else `pass`. Exit code 1 on `fail`.
 - Hand-written skills get `metadata_missing` warnings, since only generated skills carry provenance metadata.
 
-## Differences from TechDesign §8
+## Differences from the design (§8)
 
 - §8.4's report has no `duplication` check; the code adds it, plus `artifactHash`, `behavioural.result` and `revisionHints`.
 - `scope` is never mandatory, and `grounding` is mandatory only through `requireEvidence` (hard-coded to true for runs).

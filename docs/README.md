@@ -1,12 +1,12 @@
 # Dynamic Skills documentation
 
-Reference documentation for Dynamic Skills, a TypeScript tool that generates Agent Skills just in time for coding agents. The project [README](../README.md) covers installation and a short overview; [TechDesign.md](../TechDesign.md) is the design. These guides describe what the code under `src/` actually does, and call out where it differs from the design.
+Reference documentation for Dynamic Skills, a TypeScript tool that generates Agent Skills just in time for coding agents. The project [README](../README.md) covers installation and a short overview. These guides describe what the code under `src/` actually does. Section references (§) point to the project's design document, which isn't public.
 
 ## Guides
 
 | Guide | What it covers |
 | --- | --- |
-| [Architecture](architecture.md) | Module map (src/ ↔ TechDesign ↔ exports), the lifecycle of one run, on-disk state, the state machine |
+| [Architecture](architecture.md) | Module map (src/ ↔ design section ↔ exports), the lifecycle of one run, on-disk state, the state machine |
 | [Bridge protocol](bridge-protocol.md) | JSON contract of every `dynskills run …` command: inputs, statuses, response fields, errors, exit codes, idempotency, locking, budget |
 | [Configuration](configuration.md) | Every key of `dynamic-skills.config.json`, validation rules, environment variables |
 | [Evaluation](evaluation.md) | Generation checks and finding codes, behavioural smoke eval, revision policy, baseline comparison, `validate` |
@@ -20,7 +20,7 @@ Reference documentation for Dynamic Skills, a TypeScript tool that generates Age
 
 ## Other references
 
-- [Architecture Decision Records](adr/README.md) — ADR-010 to ADR-017 (ADR-001 to ADR-009 are in [TechDesign.md §21](../TechDesign.md#21-architectural-decision-records)):
+- [Architecture Decision Records](adr/README.md) — ADR-010 to ADR-017 (ADR-001 to ADR-009 are in the design document, which isn't public):
   - [010](adr/010-single-package.md) One installable package, one folder per logical module
   - [011](adr/011-typescript-toolchain.md) Build with TypeScript 7; lint with typescript-eslint on TypeScript 6
   - [012](adr/012-cli-bridge.md) A JSON request–response CLI bridge with persisted run state

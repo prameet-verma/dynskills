@@ -1,5 +1,5 @@
 {
-  "$comment": "TechDesign §18.7 benchmark scenarios. Each `expected` block lists facts that are true for the fixture repository (checked against its files), independent of what discovery currently finds. Names are compared case- and punctuation-insensitively.",
+  "$comment": "Benchmark scenarios. Each `expected` block lists facts that are true for the fixture repository (checked against its files), independent of what discovery currently finds. Names are compared case- and punctuation-insensitively.",
   "scenarios": [
     {
       "id": "node-ts-refund-route",

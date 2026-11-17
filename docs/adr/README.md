@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-ADR-001 to ADR-009 are in [TechDesign.md §21](../../TechDesign.md#21-architectural-decision-records). The records here continue that numbering and cover decisions made during implementation.
+ADR-001 to ADR-009 are in the project's design document, which isn't public. The records here continue that numbering and cover decisions made during implementation.
 
 | ADR | Decision | Status |
 | --- | --- | --- |

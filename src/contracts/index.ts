@@ -1,7 +1,7 @@
 /**
  * Shared, versioned contracts between Dynamic Skills components.
  * Every other module depends on these types; change them deliberately.
- * Section references (§) point to TechDesign.md.
+ * Section references (§) point to the project's design document (not public).
  */
 
 export const SCHEMA_VERSION = "1.0" as const;
