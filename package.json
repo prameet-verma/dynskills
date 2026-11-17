@@ -1,6 +1,6 @@
 {
   "name": "dynskills",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Experimental: Dynamic Skills, a just-in-time skill synthesizer for AI coding agents (Claude Code, Codex, OpenCode)",
   "keywords": [
     "agent-skills",
