@@ -22,7 +22,7 @@ You need Node.js 26 (`.nvmrc` pins 26.13.1) and pnpm 12.
 
 ```bash
 nvm use
-corepack enable          # provides the pnpm version pinned in package.json
+npm install -g pnpm@12  # Node 26 no longer ships Corepack
 pnpm install
 pnpm build
 ```
@@ -90,6 +90,20 @@ Follow the steps in [docs/adapters.md](docs/adapters.md#adding-a-harness). Every
 2. **Keep pull requests focused.** One change per pull request.
 3. **Describe the change.** Say what changed and why, and how you tested it. Mention any live harness tests you ran.
 4. **Write clear commits.** Use a short imperative subject line, such as "Fix reload hint for new skill directories".
+
+## Releasing (maintainers)
+
+Publishing a GitHub release publishes the same version to npm automatically, through `.github/workflows/release.yml`. The workflow uses npm trusted publishing, so no npm token is stored in the repository, and npm shows a provenance badge linking each version to the workflow run that built it.
+
+1. Bump the version: `npm version patch --no-git-tag-version` (or `minor`/`major`). Commit and push to `main`.
+2. Wait for the **CI** checks on that commit to pass.
+3. Create a GitHub release whose tag is `v` plus the version, for example `v0.2.0`, pointing at that commit:
+   ```bash
+   gh release create v0.2.0 --target main --generate-notes
+   ```
+4. The **Release** workflow checks that the tag matches `package.json`, runs all checks, and publishes. A release marked as a pre-release is published under the npm tag `next` instead of `latest`.
+
+A version can be published only once, so fix a failed release by bumping the version again.
 
 ## Reporting bugs and security issues
 
